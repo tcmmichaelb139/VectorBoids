@@ -1,0 +1,36 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+:root {
+	--tp-base-background-color: theme('colors.bg');
+	--tp-base-shadow-color: hsla(0, 0, 0, 0);
+	--tp-button-background-color: theme('colors.bg-alt');
+	--tp-button-background-color-active: theme('colors.purple');
+	--tp-button-background-color-focus: theme('colors.gray');
+	--tp-button-background-color-hover: theme('colors.gray');
+	--tp-button-foreground-color: theme('colors.fg');
+	--tp-container-background-color: theme('colors.gray');
+	--tp-container-background-color-active: theme('colors.gray');
+	--tp-container-background-color-focus: theme('colors.unknown');
+	--tp-container-background-color-hover: theme('colors.unknown');
+	--tp-container-foreground-color: theme('colors.unknown');
+	--tp-groove-foreground-color: theme('colors.unknown');
+	--tp-input-background-color: theme('colors.bg-alt');
+	--tp-input-background-color-active: theme('colors.gray');
+	--tp-input-background-color-focus: theme('colors.bg-alt');
+	--tp-input-background-color-hover: theme('colors.bg-alt');
+	--tp-input-foreground-color: theme('colors.fg');
+	--tp-label-foreground-color: theme('colors.fg');
+	--tp-monitor-background-color: theme('colors.bg-alt');
+	--tp-monitor-foreground-color: theme('colors.gray');
+	--tp-base-border-radius: 0px;
+}
+
+html {
+	@apply m-0 h-full w-full bg-bg;
+}
+
+body {
+	@apply m-0 h-full w-full;
+}
