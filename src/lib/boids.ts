@@ -1,7 +1,6 @@
-// import kdTree from 'kd-tree-javascript';
-
 import type { BoidSimOptions } from './types';
 import { mouse } from '$lib/globals';
+import { kdTree } from './utils';
 
 class Boid {
 	x: number;
@@ -24,13 +23,13 @@ class Boid {
 		this.new = { x: 0, y: 0, vx: 0, vy: 0 };
 	}
 
-	public update(boids: Boid[], canvas: HTMLCanvasElement, options: BoidSimOptions) {
+	public update(boids: kdTree<Boid>, canvas: HTMLCanvasElement, options: BoidSimOptions) {
 		const seperationDxDy: [number, number] = [0, 0];
 		const alignmentVel: [number, number] = [0, 0];
 		const cohesionDxDy: [number, number] = [0, 0];
 		let numBoidsVisible = 0;
 
-		for (const boid of boids) {
+		for (const [boid, _] of boids.nearest(this, options.boidCount, options.ranges.visible)) {
 			if (boid === this) continue;
 
 			const dx = boid.x - this.x;
@@ -114,10 +113,10 @@ class Boid {
 	}
 
 	public pushUpdate(options: BoidSimOptions) {
-		this.x =
-			this.new.x * options.factors.regularization + this.x * (1 - options.factors.regularization);
-		this.y =
-			this.new.y * options.factors.regularization + this.y * (1 - options.factors.regularization);
+		const oldx = this.x;
+		const oldy = this.y;
+		this.x = this.new.x;
+		this.y = this.new.y;
 		this.vx =
 			this.new.vx * options.factors.regularization + this.vx * (1 - options.factors.regularization);
 		this.vy =
@@ -130,6 +129,8 @@ class Boid {
 		// update history
 		this.history.push([this.x, this.y]);
 		while (this.history.length > options.trailLength) this.history.shift();
+
+		return [oldx, oldy];
 	}
 
 	public draw(ctx: CanvasRenderingContext2D, options: BoidSimOptions) {
@@ -193,65 +194,68 @@ class Boid {
 export default class Boids {
 	private canvas: HTMLCanvasElement;
 	private options: BoidSimOptions;
-	private boids: Boid[] = [];
-	// private kdTree: kdTree.kdTree<{ x: number; y: number }>;
+	private boids: kdTree<Boid>;
 
 	constructor(canvas: HTMLCanvasElement, options: BoidSimOptions) {
 		this.canvas = canvas;
 		this.options = options;
 
-		// this.kdTree = new kdTree.kdTree(
-		// 	[],
-		// 	(a: { x: number; y: number }, b: { x: number; y: number }) => {
-		// 		return Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2);
-		// 	},
-		// 	['x', 'y']
-		// );
+		this.boids = new kdTree(
+			[],
+			(a: Boid, b: Boid) => {
+				return Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2);
+			},
+			['x', 'y', 'vx', 'vy', 'history']
+		);
 
 		this.updateCanvas();
 		this.createBoids();
 	}
 
 	private createBoids() {
-		this.boids = [];
+		const boids = [];
 		for (let i = 0; i < this.options.boidCount; i++) {
+			const px =
+				Math.random() * (this.canvas.width - 2 * this.options.bounds.margin) +
+				this.options.bounds.margin;
+			const py =
+				Math.random() * (this.canvas.height - 2 * this.options.bounds.margin) +
+				this.options.bounds.margin;
 			const sx =
 				(Math.random() * (this.options.maxSpeed - this.options.minSpeed) + this.options.minSpeed) *
 				(Math.random() > 0.5 ? 1 : -1);
 			const sy =
 				(Math.random() * (this.options.maxSpeed - this.options.minSpeed) + this.options.minSpeed) *
 				(Math.random() > 0.5 ? 1 : -1);
-			this.boids.push(
-				new Boid(
-					Math.random() * (this.canvas.width - 2 * this.options.bounds.margin) +
-						this.options.bounds.margin,
-					Math.random() * (this.canvas.height - 2 * this.options.bounds.margin) +
-						this.options.bounds.margin,
-					sx,
-					sy
-				)
-			);
+			boids.push(new Boid(px, py, sx, sy));
 		}
+		this.boids = new kdTree(
+			boids,
+			(a: Boid, b: Boid) => {
+				return Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2);
+			},
+			['x', 'y', 'vx', 'vy', 'history']
+		);
 	}
 
 	private update() {
 		if (this.canvas.width != ((window.innerWidth * 7) / 10) * this.options.bounds.scale)
 			this.updateCanvas();
-		if (this.boids.length != this.options.boidCount) this.createBoids();
+		if (this.boids.length() != this.options.boidCount) this.createBoids();
 
 		const ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
 		ctx.save();
 		ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-		for (const boid of this.boids) {
+		for (const boid of this.boids.all()) {
 			boid.update(this.boids, this.canvas, this.options);
 		}
 
-		for (const boid of this.boids) {
+		for (const boid of this.boids.all()) {
 			boid.pushUpdate(this.options);
 		}
 
-		for (const boid of this.boids) {
+		for (const boid of this.boids.all()) {
 			boid.draw(ctx, this.options);
 		}
 
