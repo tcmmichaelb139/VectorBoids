@@ -1,6 +1,6 @@
 import type { BoidSimOptions } from './types';
 import { mouse } from '$lib/globals';
-import { kdTree } from './utils';
+import kdt from 'kd-tree-javascript';
 
 class Boid {
 	x: number;
@@ -23,18 +23,25 @@ class Boid {
 		this.new = { x: 0, y: 0, vx: 0, vy: 0 };
 	}
 
-	public update(boids: kdTree<Boid>, canvas: HTMLCanvasElement, options: BoidSimOptions) {
+	public update(boids: kdt.kdTree<Boid>, canvas: HTMLCanvasElement, options: BoidSimOptions) {
 		const seperationDxDy: [number, number] = [0, 0];
 		const alignmentVel: [number, number] = [0, 0];
 		const cohesionDxDy: [number, number] = [0, 0];
 		let numBoidsVisible = 0;
 
-		for (const [boid, _] of boids.nearest(this, options.boidCount, options.ranges.visible)) {
+		// console.log(boids.nearest(this, options.boidCount, 1000));
+
+		for (const [boid] of boids.nearest(
+			this,
+			options.boidCount,
+			options.ranges.visible * options.ranges.visible
+		)) {
 			if (boid === this) continue;
 
 			const dx = boid.x - this.x;
 			const dy = boid.y - this.y;
 			const distance = Math.sqrt(dx * dx + dy * dy);
+			// console.log(distance);
 			if (options.ranges.protected <= distance && distance <= options.ranges.visible) {
 				alignmentVel[0] += boid.vx;
 				alignmentVel[1] += boid.vy;
@@ -194,13 +201,15 @@ class Boid {
 export default class Boids {
 	private canvas: HTMLCanvasElement;
 	private options: BoidSimOptions;
-	private boids: kdTree<Boid>;
+	private boids: Boid[];
+	private kdtree: kdt.kdTree<Boid>;
 
 	constructor(canvas: HTMLCanvasElement, options: BoidSimOptions) {
 		this.canvas = canvas;
 		this.options = options;
 
-		this.boids = new kdTree(
+		this.boids = [];
+		this.kdtree = new kdt.kdTree(
 			[],
 			(a: Boid, b: Boid) => {
 				return Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2);
@@ -212,8 +221,18 @@ export default class Boids {
 		this.createBoids();
 	}
 
+	private newKdTree() {
+		this.kdtree = new kdt.kdTree(
+			this.boids,
+			(a: Boid, b: Boid) => {
+				return Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2);
+			},
+			['x', 'y', 'vx', 'vy', 'history']
+		);
+	}
+
 	private createBoids() {
-		const boids = [];
+		this.boids = [];
 		for (let i = 0; i < this.options.boidCount; i++) {
 			const px =
 				Math.random() * (this.canvas.width - 2 * this.options.bounds.margin) +
@@ -227,35 +246,31 @@ export default class Boids {
 			const sy =
 				(Math.random() * (this.options.maxSpeed - this.options.minSpeed) + this.options.minSpeed) *
 				(Math.random() > 0.5 ? 1 : -1);
-			boids.push(new Boid(px, py, sx, sy));
+			this.boids.push(new Boid(px, py, sx, sy));
 		}
-		this.boids = new kdTree(
-			boids,
-			(a: Boid, b: Boid) => {
-				return Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2);
-			},
-			['x', 'y', 'vx', 'vy', 'history']
-		);
+		this.newKdTree();
 	}
 
 	private update() {
 		if (this.canvas.width != ((window.innerWidth * 7) / 10) * this.options.bounds.scale)
 			this.updateCanvas();
-		if (this.boids.length() != this.options.boidCount) this.createBoids();
+		if (this.boids.length != this.options.boidCount) this.createBoids();
 
 		const ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
 		ctx.save();
 		ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-		for (const boid of this.boids.all()) {
-			boid.update(this.boids, this.canvas, this.options);
+		this.newKdTree();
+
+		for (const boid of this.boids) {
+			boid.update(this.kdtree, this.canvas, this.options);
 		}
 
-		for (const boid of this.boids.all()) {
+		for (const boid of this.boids) {
 			boid.pushUpdate(this.options);
 		}
 
-		for (const boid of this.boids.all()) {
+		for (const boid of this.boids) {
 			boid.draw(ctx, this.options);
 		}
 
