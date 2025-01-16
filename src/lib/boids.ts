@@ -1,8 +1,8 @@
 import type { BoidSimOptions } from './types';
 import { mouse } from '$lib/globals';
-import kdt from 'kd-tree-javascript';
+import { Quadtree, Circle } from '@timohausmann/quadtree-ts';
 
-class Boid {
+class Boid extends Circle {
 	x: number;
 	y: number;
 	vx: number;
@@ -16,6 +16,11 @@ class Boid {
 	history: [number, number][] = [];
 
 	constructor(x: number, y: number, vx: number, vy: number) {
+		super({
+			x: x,
+			y: y,
+			r: 11
+		});
 		this.x = x;
 		this.y = y;
 		this.vx = vx;
@@ -23,25 +28,18 @@ class Boid {
 		this.new = { x: 0, y: 0, vx: 0, vy: 0 };
 	}
 
-	public update(boids: kdt.kdTree<Boid>, canvas: HTMLCanvasElement, options: BoidSimOptions) {
+	public update(boids: Boid[], canvas: HTMLCanvasElement, options: BoidSimOptions) {
 		const seperationDxDy: [number, number] = [0, 0];
 		const alignmentVel: [number, number] = [0, 0];
 		const cohesionDxDy: [number, number] = [0, 0];
 		let numBoidsVisible = 0;
 
-		// console.log(boids.nearest(this, options.boidCount, 1000));
-
-		for (const [boid] of boids.nearest(
-			this,
-			options.boidCount,
-			options.ranges.visible * options.ranges.visible
-		)) {
+		for (const boid of boids) {
 			if (boid === this) continue;
 
 			const dx = boid.x - this.x;
 			const dy = boid.y - this.y;
 			const distance = Math.sqrt(dx * dx + dy * dy);
-			// console.log(distance);
 			if (options.ranges.protected <= distance && distance <= options.ranges.visible) {
 				alignmentVel[0] += boid.vx;
 				alignmentVel[1] += boid.vy;
@@ -202,33 +200,24 @@ export default class Boids {
 	private canvas: HTMLCanvasElement;
 	private options: BoidSimOptions;
 	private boids: Boid[];
-	private kdtree: kdt.kdTree<Boid>;
+	private quadtree: Quadtree<Boid>;
 
 	constructor(canvas: HTMLCanvasElement, options: BoidSimOptions) {
 		this.canvas = canvas;
 		this.options = options;
-
 		this.boids = [];
-		this.kdtree = new kdt.kdTree(
-			[],
-			(a: Boid, b: Boid) => {
-				return Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2);
-			},
-			['x', 'y', 'vx', 'vy', 'history']
-		);
 
 		this.updateCanvas();
 		this.createBoids();
-	}
 
-	private newKdTree() {
-		this.kdtree = new kdt.kdTree(
-			this.boids,
-			(a: Boid, b: Boid) => {
-				return Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2);
-			},
-			['x', 'y', 'vx', 'vy', 'history']
-		);
+		console.log(canvas.width * 5, canvas.height * 5);
+
+		this.quadtree = new Quadtree({
+			x: 0,
+			y: 0,
+			width: canvas.width * 5,
+			height: canvas.height * 5
+		});
 	}
 
 	private createBoids() {
@@ -248,7 +237,13 @@ export default class Boids {
 				(Math.random() > 0.5 ? 1 : -1);
 			this.boids.push(new Boid(px, py, sx, sy));
 		}
-		this.newKdTree();
+	}
+
+	private newQuadTree() {
+		this.quadtree.clear();
+		for (const boid of this.boids) {
+			this.quadtree.insert(boid);
+		}
 	}
 
 	private update() {
@@ -260,10 +255,19 @@ export default class Boids {
 		ctx.save();
 		ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-		this.newKdTree();
+		this.newQuadTree();
 
 		for (const boid of this.boids) {
-			boid.update(this.kdtree, this.canvas, this.options);
+			// console.log(
+			// 	this.quadtree.retrieve(new Circle({ x: boid.x, y: boid.y, r: this.options.ranges.visible }))
+			// );
+			boid.update(
+				this.quadtree.retrieve(
+					new Circle({ x: boid.x, y: boid.y, r: this.options.ranges.visible })
+				),
+				this.canvas,
+				this.options
+			);
 		}
 
 		for (const boid of this.boids) {
