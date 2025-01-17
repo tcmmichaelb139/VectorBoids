@@ -19,15 +19,16 @@
 			visible: 100
 		},
 		factors: {
-			seperation: 0.05,
+			separation: 0.05,
 			alignment: 0.05,
-			cohesion: 0.0005,
-			regularization: 0.9,
+			cohesion: 0.025,
+			regularization: 0.75,
 			mouse: 0.05,
 			turn: 0.2
 		},
 		maxSpeed: 2.5,
 		minSpeed: 1,
+		viewAngle: 360,
 		trailLength: 0,
 		mouse: 'none',
 		show: {
@@ -35,6 +36,7 @@
 			visibleRange: false
 		},
 		colors: {
+			background: '#1a1b26',
 			boid: '#bb9af7',
 			outline: '#565f89',
 			trail: '#bb9af7',
@@ -62,6 +64,7 @@
 	<canvas
 		id="boids"
 		class="h-[90vh] w-[70vw] border-2 border-gray"
+		style="background-color: {options.colors.background}"
 		onmousemove={(e) => {
 			const rect = (e.target as HTMLCanvasElement)?.getBoundingClientRect();
 			mouse.x = (e.clientX - rect.left) * options.bounds.scale;
@@ -69,7 +72,7 @@
 		}}
 	></canvas>
 	<div class="ml-10 h-[90vh] w-[20vw] border-2 border-gray">
-		<Slider bind:value={options.boidCount} label="Boid Count" min={1} max={1000} step={1} />
+		<Slider bind:value={options.boidCount} label="Boid Count" min={1} max={2000} step={1} />
 		<Slider
 			bind:value={options.bounds.margin}
 			label="Bounds Margin"
@@ -87,7 +90,7 @@
 		/>
 		<Slider bind:value={options.ranges.visible} label="Visible Range" min={1} max={500} step={1} />
 		<Slider
-			bind:value={options.factors.seperation}
+			bind:value={options.factors.separation}
 			label="Seperation Factor"
 			min={0}
 			max={1}
@@ -104,8 +107,8 @@
 			bind:value={options.factors.cohesion}
 			label="Cohesion Factor"
 			min={0}
-			max={0.1}
-			step={0.0001}
+			max={1}
+			step={0.01}
 		/>
 		<Slider bind:value={options.factors.turn} label="Turn Factor" min={0} max={10} step={0.01} />
 		<Slider
@@ -118,6 +121,7 @@
 		<Slider bind:value={options.factors.mouse} label="Mouse Factor" min={0} max={1} step={0.01} />
 		<Slider bind:value={options.maxSpeed} label="Max Speed" min={0} max={20} step={0.1} />
 		<Slider bind:value={options.minSpeed} label="Min Speed" min={0} max={20} step={0.1} />
+		<Slider bind:value={options.viewAngle} label="View Angle" min={0} max={360} step={1} />
 		<Slider bind:value={options.trailLength} label="Trail Length" min={0} max={250} step={1} />
 		<List
 			bind:value={options.mouse}
@@ -126,6 +130,7 @@
 		/>
 		<Checkbox bind:value={options.show.protectedRange} label="Show Protected Range" />
 		<Checkbox bind:value={options.show.visibleRange} label="Show Visible Range" />
+		<Color bind:value={options.colors.background} label="Background Color" />
 		<Color bind:value={options.colors.boid} label="Boid Color" />
 		<Color bind:value={options.colors.outline} label="Outline Color" />
 		<Color bind:value={options.colors.trail} label="Trail Color" />

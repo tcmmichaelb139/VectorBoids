@@ -11,7 +11,7 @@ export interface BoidSimOptions {
 		visible: number;
 	};
 	factors: {
-		seperation: number;
+		separation: number;
 		alignment: number;
 		cohesion: number;
 		regularization: number;
@@ -20,6 +20,7 @@ export interface BoidSimOptions {
 	};
 	maxSpeed: number;
 	minSpeed: number;
+	viewAngle: number;
 	trailLength: number;
 	mouse: string;
 	show: {
@@ -27,6 +28,7 @@ export interface BoidSimOptions {
 		visibleRange: boolean;
 	};
 	colors: {
+		background: string;
 		boid: string;
 		outline: string;
 		trail: string;
