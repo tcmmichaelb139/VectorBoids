@@ -6,9 +6,9 @@
 	--tp-base-background-color: theme('colors.bg');
 	--tp-base-shadow-color: hsla(0, 0, 0, 0);
 	--tp-button-background-color: theme('colors.bg-alt');
-	--tp-button-background-color-active: theme('colors.purple');
-	--tp-button-background-color-focus: theme('colors.gray');
-	--tp-button-background-color-hover: theme('colors.gray');
+	--tp-button-background-color-active: theme('colors.gray');
+	--tp-button-background-color-focus: theme('colors.bg-alt');
+	--tp-button-background-color-hover: theme('colors.bg-alt');
 	--tp-button-foreground-color: theme('colors.fg');
 	--tp-container-background-color: theme('colors.bg-alt');
 	--tp-container-background-color-active: theme('colors.bg-alt');
@@ -45,4 +45,8 @@ body {
 
 ::-webkit-scrollbar-track {
 	@apply bg-bg-alt;
+}
+
+.draggable-container {
+	@apply border border-gray;
 }

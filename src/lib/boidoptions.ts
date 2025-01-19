@@ -120,7 +120,7 @@ const interestingBoidSimOptions: BoidSimOptions[] = [
 	},
 	{
 		// this is like a school of fish and has an interesting equalibrium where they all move in a circle
-		boidCount: 1400,
+		boidCount: 1000,
 		numBoidColors: 1,
 		bounds: {
 			width: 0,
@@ -184,9 +184,9 @@ const interestingBoidSimOptions: BoidSimOptions[] = [
 			turn: 5
 		},
 		caps: {
-			maxSpeed: 2,
+			maxSpeed: 5,
 			minSpeed: 0.5,
-			maxAcceleration: 0.1,
+			maxAcceleration: 0.2,
 			minAcceleration: 0.01
 		},
 		viewAngle: 360,
@@ -227,9 +227,9 @@ const interestingBoidSimOptions: BoidSimOptions[] = [
 			turn: 5
 		},
 		caps: {
-			maxSpeed: 2,
+			maxSpeed: 5,
 			minSpeed: 0.5,
-			maxAcceleration: 0.1,
+			maxAcceleration: 0.2,
 			minAcceleration: 0.01
 		},
 		viewAngle: 360,

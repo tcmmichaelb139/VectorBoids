@@ -301,7 +301,7 @@ export default class Boids {
 			this.oldOptions = { ...this.options };
 		}
 
-		const dt = (time - this.timestep) / 16;
+		const dt = Math.min(4, (time - this.timestep) / 16);
 
 		const ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
 		ctx.save();
