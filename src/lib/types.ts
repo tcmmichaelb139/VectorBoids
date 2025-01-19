@@ -1,5 +1,6 @@
 export interface BoidSimOptions {
 	boidCount: number;
+	numBoidColors: number;
 	bounds: {
 		width: number;
 		height: number;
@@ -25,16 +26,16 @@ export interface BoidSimOptions {
 		minAcceleration: number;
 	};
 	viewAngle: number;
-	trailLength: number;
 	mouse: string;
+	followColor: boolean;
+	trailLength: number;
 	show: {
 		separationRange: boolean;
 		visibleRange: boolean;
 	};
 	colors: {
 		background: string;
-		boid: string;
-		trail: string;
+		boids: string[];
 		separation: string;
 		visible: string;
 	};

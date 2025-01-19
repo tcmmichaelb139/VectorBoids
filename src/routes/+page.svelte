@@ -1,21 +1,76 @@
 <script lang="ts">
-	import { Slider, List, Checkbox, Color, FpsGraph, Folder, Pane } from 'svelte-tweakpane-ui';
+	import {
+		Pane,
+		Folder,
+		Slider,
+		List,
+		Checkbox,
+		Color,
+		ButtonGrid,
+		FpsGraph,
+		type ButtonGridClickEvent
+	} from 'svelte-tweakpane-ui';
 	import { onMount } from 'svelte';
 
 	import Boids from '$lib/boids';
-	import { mouse, options } from '$lib/globals';
+	import { mouse } from '$lib/globals';
+	import { getBoidSimOptions, numBoidSimOptions, updateBoidOptions } from '$lib/boidoptions';
+	import type { BoidSimOptions } from '$lib/types';
 
 	let fpsMeter = 60;
 
 	let boids: Boids;
 
+	let options: BoidSimOptions = {
+		boidCount: 1000,
+		numBoidColors: 2,
+		bounds: {
+			width: 0,
+			height: 0,
+			margins: 50,
+			scale: 1
+		},
+		ranges: {
+			separation: 50,
+			visible: 50
+		},
+		factors: {
+			separation: 1.0,
+			alignment: 0.75,
+			cohesion: 0.75,
+			drag: 0.25,
+			mouse: 0.5,
+			turn: 5
+		},
+		caps: {
+			maxSpeed: 2.5,
+			minSpeed: 0.5,
+			maxAcceleration: 0.15,
+			minAcceleration: 0.01
+		},
+		viewAngle: 360,
+		mouse: 'none',
+		followColor: true,
+		trailLength: 10,
+		show: {
+			separationRange: false,
+			visibleRange: false
+		},
+		colors: {
+			background: '#1a1b26',
+			boids: ['#bb9af7'],
+			separation: '#f7768e',
+			visible: '#9ece6a'
+		}
+	};
+
 	onMount(() => {
-		options.bounds.margins = window.innerWidth / 30;
+		options = updateBoidOptions(options);
 
 		const canvas = document.getElementById('boids') as HTMLCanvasElement;
 		if (!canvas) return console.log('Canvas not found');
 
-		boids = new Boids(canvas);
+		boids = new Boids(canvas, options);
 		boids.start();
 	});
 </script>
@@ -39,13 +94,22 @@
 		width={300}
 		title="Boid Settings"
 	>
-		<Slider bind:value={options.boidCount} label="Boid Count" min={1} max={5000} step={1} />
+		<Folder title="General" expanded={true}>
+			<Slider bind:value={options.boidCount} label="Boid Count" min={1} max={5000} step={1} />
+			<Slider
+				bind:value={options.numBoidColors}
+				label="# of Boid Colors"
+				min={1}
+				max={10}
+				step={1}
+			/>
+		</Folder>
 		<Folder title="Bounds" expanded={false}>
 			<Slider
 				bind:value={options.bounds.margins}
 				label="Margins"
 				min={0}
-				max={Math.max(options.bounds.width, options.bounds.width) / 2}
+				max={Math.min(options.bounds.width, options.bounds.width) / 2}
 				step={1}
 			/>
 			<Slider
@@ -123,17 +187,32 @@
 				label="Mouse Function"
 				options={{ None: 'none', Avoid: 'avoid', Attract: 'attract' }}
 			/>
+			<Checkbox bind:value={options.followColor} label="Follow Color" />
 		</Folder>
 		<Folder title="Visuals" expanded={false}>
 			<Slider bind:value={options.trailLength} label="Trail Length" min={0} max={250} step={1} />
-			<Checkbox bind:value={options.show.separationRange} label="Show Separation Range" />
-			<Checkbox bind:value={options.show.visibleRange} label="Show Visible Range" />
+			<Folder title="Show" expanded={false}>
+				<Checkbox bind:value={options.show.separationRange} label="Separation Range" />
+				<Checkbox bind:value={options.show.visibleRange} label="Visible Range" />
+			</Folder>
 			<Color bind:value={options.colors.background} label="Background Color" />
-			<Color bind:value={options.colors.boid} label="Boid Color" />
-			<Color bind:value={options.colors.trail} label="Trail Color" />
-			<Color bind:value={options.colors.separation} label="Separation Range Color" />
-			<Color bind:value={options.colors.visible} label="Visible Range Color" />
+			<Folder title="Boid Colors" expanded={false}>
+				{#each options.colors.boids as color, i}
+					<Color bind:value={options.colors.boids[i]} label={`Boid Color ${i + 1}`} />
+				{/each}
+			</Folder>
+			<Folder title="Range Colors" expanded={false}>
+				<Color bind:value={options.colors.separation} label="Separation Range Color" />
+				<Color bind:value={options.colors.visible} label="Visible Range Color" />
+			</Folder>
 		</Folder>
+		<ButtonGrid
+			on:click={(event: ButtonGridClickEvent) => {
+				options = getBoidSimOptions(parseInt(event.detail.label));
+				boids.reset(options);
+			}}
+			buttons={Array.from({ length: numBoidSimOptions() }, (_, i) => i.toString())}
+		/>
 		<FpsGraph
 			max={fpsMeter}
 			on:change={(e) => {

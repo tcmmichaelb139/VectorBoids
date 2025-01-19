@@ -63,3 +63,7 @@ export function angle(v1: [number, number], v2: [number, number]): number {
 	const det = v1[0] * v2[1] - v1[1] * v2[0];
 	return Math.atan2(det, dot);
 }
+
+export function randomInt(min: number, max: number): number {
+	return Math.floor(Math.random() * (max - min + 1) + min);
+}

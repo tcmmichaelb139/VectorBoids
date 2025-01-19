@@ -1,6 +1,7 @@
-import { mouse, options } from '$lib/globals';
+import type { BoidSimOptions } from '$lib/types';
+import { mouse } from '$lib/globals';
 
-import { SpatialHashing, normalize, angle } from './utils';
+import { SpatialHashing, normalize, angle, randomInt } from './utils';
 
 class Boid {
 	x: number;
@@ -9,25 +10,29 @@ class Boid {
 	vy: number;
 	ax: number;
 	ay: number;
+	options: BoidSimOptions;
+	color: number;
 	history: [number, number][] = [];
 
-	constructor(x: number, y: number, vx: number, vy: number) {
+	constructor(x: number, y: number, vx: number, vy: number, options: BoidSimOptions) {
 		this.x = x;
 		this.y = y;
 		this.vx = vx;
 		this.vy = vy;
 		this.ax = 0;
 		this.ay = 0;
+		this.options = options;
+		this.color = randomInt(1, options.numBoidColors) - 1;
 	}
 
 	private clampAcc() {
 		const acceleration = Math.sqrt(this.ax * this.ax + this.ay * this.ay);
 
-		this.ax = (this.ax / acceleration) * Math.max(options.caps.minAcceleration, acceleration);
-		this.ay = (this.ay / acceleration) * Math.max(options.caps.minAcceleration, acceleration);
+		this.ax = (this.ax / acceleration) * Math.max(this.options.caps.minAcceleration, acceleration);
+		this.ay = (this.ay / acceleration) * Math.max(this.options.caps.minAcceleration, acceleration);
 
-		this.ax = (this.ax / acceleration) * Math.min(acceleration, options.caps.maxAcceleration);
-		this.ay = (this.ay / acceleration) * Math.min(acceleration, options.caps.maxAcceleration);
+		this.ax = (this.ax / acceleration) * Math.min(acceleration, this.options.caps.maxAcceleration);
+		this.ay = (this.ay / acceleration) * Math.min(acceleration, this.options.caps.maxAcceleration);
 
 		if (acceleration === 0) this.ax = this.ay = 0;
 	}
@@ -35,20 +40,20 @@ class Boid {
 	private clampVel() {
 		const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
 
-		this.vx = (this.vx / speed) * Math.max(options.caps.minSpeed, speed);
-		this.vy = (this.vy / speed) * Math.max(options.caps.minSpeed, speed);
+		this.vx = (this.vx / speed) * Math.max(this.options.caps.minSpeed, speed);
+		this.vy = (this.vy / speed) * Math.max(this.options.caps.minSpeed, speed);
 
-		this.vx = (this.vx / speed) * Math.min(speed, options.caps.maxSpeed);
-		this.vy = (this.vy / speed) * Math.min(speed, options.caps.maxSpeed);
+		this.vx = (this.vx / speed) * Math.min(speed, this.options.caps.maxSpeed);
+		this.vy = (this.vy / speed) * Math.min(speed, this.options.caps.maxSpeed);
 
 		if (speed === 0) this.vx = this.vy = 0;
 	}
 
 	private avoidBounds(distance: number) {
-		if (distance < options.bounds.margins) {
-			return options.factors.turn;
+		if (distance < this.options.bounds.margins) {
+			return this.options.factors.turn;
 		} else {
-			return options.factors.turn / distance;
+			return this.options.factors.turn / distance;
 		}
 	}
 
@@ -57,13 +62,13 @@ class Boid {
 		const dx = mouse.x - this.x;
 		const dy = mouse.y - this.y;
 		const distance = Math.sqrt(dx * dx + dy * dy);
-		if (distance < options.ranges.visible) {
-			if (options.mouse === 'avoid') {
-				this.ax -= (dx / distance) * options.factors.mouse;
-				this.ay -= (dy / distance) * options.factors.mouse;
-			} else if (options.mouse === 'attract') {
-				this.ax += (dx / distance) * options.factors.mouse;
-				this.ay += (dy / distance) * options.factors.mouse;
+		if (distance < this.options.ranges.visible) {
+			if (this.options.mouse === 'avoid') {
+				this.ax -= (dx / distance) * this.options.factors.mouse;
+				this.ay -= (dy / distance) * this.options.factors.mouse;
+			} else if (this.options.mouse === 'attract') {
+				this.ax += (dx / distance) * this.options.factors.mouse;
+				this.ay += (dy / distance) * this.options.factors.mouse;
 			}
 		}
 	}
@@ -83,24 +88,27 @@ class Boid {
 			const distance = dx * dx + dy * dy;
 
 			if (
-				angle([dx, dy], [this.vx, this.vy]) > options.viewAngle * (Math.PI / 360) ||
-				distance > options.ranges.visible * options.ranges.visible
+				// check if boid is within view angle and distance
+				Math.abs(angle([dx, dy], [this.vx, this.vy])) > this.options.viewAngle * (Math.PI / 360) ||
+				distance > this.options.ranges.visible * this.options.ranges.visible
 			) {
 				continue;
 			}
 
-			alignmentVel[0] += boid.vx;
-			alignmentVel[1] += boid.vy;
+			if (this.options.followColor && boid.color === this.color) {
+				alignmentVel[0] += boid.vx;
+				alignmentVel[1] += boid.vy;
 
-			cohesionDxDy[0] += boid.x;
-			cohesionDxDy[1] += boid.y;
+				cohesionDxDy[0] += boid.x;
+				cohesionDxDy[1] += boid.y;
 
-			if (distance < options.ranges.separation * options.ranges.separation) {
+				numBoidsVisible++;
+			}
+
+			if (distance < this.options.ranges.separation * this.options.ranges.separation) {
 				separationDxDy[0] -= dx / distance;
 				separationDxDy[1] -= dy / distance;
 			}
-
-			numBoidsVisible++;
 		}
 
 		if (numBoidsVisible > 0) {
@@ -123,29 +131,29 @@ class Boid {
 		cohesionDxDy = normalize(cohesionDxDy);
 
 		// update acceleration
-		this.ax = -this.vx * options.factors.drag;
-		this.ay = -this.vy * options.factors.drag;
+		this.ax = -this.vx * this.options.factors.drag;
+		this.ay = -this.vy * this.options.factors.drag;
 
 		// mouse interactions
 		this.mouseInteractions();
 
 		// update velocity based on separation
-		this.ax += separationDxDy[0] * options.factors.separation;
-		this.ay += separationDxDy[1] * options.factors.separation;
+		this.ax += separationDxDy[0] * this.options.factors.separation;
+		this.ay += separationDxDy[1] * this.options.factors.separation;
 
 		// update velocity based on alignment
-		this.ax += alignmentVel[0] * options.factors.alignment;
-		this.ay += alignmentVel[1] * options.factors.alignment;
+		this.ax += alignmentVel[0] * this.options.factors.alignment;
+		this.ay += alignmentVel[1] * this.options.factors.alignment;
 
 		// update velocity based on cohesion
-		this.ax += cohesionDxDy[0] * options.factors.cohesion;
-		this.ay += cohesionDxDy[1] * options.factors.cohesion;
+		this.ax += cohesionDxDy[0] * this.options.factors.cohesion;
+		this.ay += cohesionDxDy[1] * this.options.factors.cohesion;
 
 		// update based on bounds
 		this.ax += this.avoidBounds(this.x);
-		this.ax -= this.avoidBounds(options.bounds.width - this.x);
+		this.ax -= this.avoidBounds(this.options.bounds.width - this.x);
 		this.ay += this.avoidBounds(this.y);
-		this.ay -= this.avoidBounds(options.bounds.height - this.y);
+		this.ay -= this.avoidBounds(this.options.bounds.height - this.y);
 	}
 
 	pushUpdate() {
@@ -163,7 +171,7 @@ class Boid {
 
 		// update history
 		this.history.push([this.x, this.y]);
-		while (this.history.length > options.trailLength) this.history.shift();
+		while (this.history.length > this.options.trailLength) this.history.shift();
 	}
 
 	draw(ctx: CanvasRenderingContext2D) {
@@ -172,29 +180,29 @@ class Boid {
 		}
 
 		// draw visual range
-		if (options.show.visibleRange) {
+		if (this.options.show.visibleRange) {
 			ctx.beginPath();
-			ctx.strokeStyle = options.colors.visible;
+			ctx.strokeStyle = this.options.colors.visible;
 			const angle = Math.atan2(this.vy, this.vx);
 			ctx.arc(
 				this.x,
 				this.y,
-				options.ranges.visible,
-				angle - options.viewAngle * (Math.PI / 360),
-				angle + options.viewAngle * (Math.PI / 360)
+				this.options.ranges.visible,
+				angle - this.options.viewAngle * (Math.PI / 360),
+				angle + this.options.viewAngle * (Math.PI / 360)
 			);
 			ctx.stroke();
 			ctx.closePath();
 		}
 
 		// draw separation range
-		if (options.show.separationRange) {
+		if (this.options.show.separationRange) {
 			ctx.beginPath();
-			ctx.strokeStyle = options.colors.separation;
+			ctx.strokeStyle = this.options.colors.separation;
 			ctx.arc(
 				this.x,
 				this.y,
-				Math.min(options.ranges.separation, options.ranges.visible),
+				Math.min(this.options.ranges.separation, this.options.ranges.visible),
 				0,
 				2 * Math.PI
 			);
@@ -202,9 +210,9 @@ class Boid {
 			ctx.closePath();
 		}
 
-		if (options.trailLength > 0) {
+		if (this.options.trailLength > 0) {
 			ctx.beginPath();
-			ctx.strokeStyle = options.colors.trail;
+			ctx.strokeStyle = this.options.colors.boids[this.color];
 			ctx.lineWidth = 1;
 			ctx.moveTo(this.history[0][0], this.history[0][1]);
 			for (let i = 0; i < this.history.length - 1; i++) {
@@ -223,7 +231,7 @@ class Boid {
 		ctx.moveTo(this.x - unitVel[0] * 3 + unitVel[1] * 3, this.y - unitVel[1] * 3 - unitVel[0] * 3);
 		ctx.lineTo(this.x + unitVel[0] * 3, this.y + unitVel[1] * 3);
 		ctx.lineTo(this.x - unitVel[0] * 3 - unitVel[1] * 3, this.y - unitVel[1] * 3 + unitVel[0] * 3);
-		ctx.strokeStyle = options.colors.boid;
+		ctx.strokeStyle = this.options.colors.boids[this.color];
 		ctx.lineWidth = 2;
 		ctx.stroke();
 		ctx.closePath();
@@ -233,11 +241,15 @@ class Boid {
 export default class Boids {
 	private canvas: HTMLCanvasElement;
 	private boids: Boid[];
+	private options: BoidSimOptions;
+	private oldOptions: BoidSimOptions;
 	private spatialhash: SpatialHashing<Boid>;
 
-	constructor(canvas: HTMLCanvasElement) {
+	constructor(canvas: HTMLCanvasElement, options: BoidSimOptions) {
 		this.canvas = canvas;
 		this.boids = [];
+		this.options = options;
+		this.oldOptions = { ...options };
 
 		this.updateCanvas();
 		this.createBoids();
@@ -253,18 +265,22 @@ export default class Boids {
 
 	private createBoids() {
 		this.boids = [];
-		for (let i = 0; i < options.boidCount; i++) {
+		for (let i = 0; i < this.options.boidCount; i++) {
 			const px =
-				Math.random() * (this.canvas.width - 2 * options.bounds.margins) + options.bounds.margins;
+				Math.random() * (this.canvas.width - 2 * this.options.bounds.margins) +
+				this.options.bounds.margins;
 			const py =
-				Math.random() * (this.canvas.height - 2 * options.bounds.margins) + options.bounds.margins;
+				Math.random() * (this.canvas.height - 2 * this.options.bounds.margins) +
+				this.options.bounds.margins;
 			const sx =
-				(Math.random() * (options.caps.maxSpeed - options.caps.minSpeed) + options.caps.minSpeed) *
+				(Math.random() * (this.options.caps.maxSpeed - this.options.caps.minSpeed) +
+					this.options.caps.minSpeed) *
 				(Math.random() > 0.5 ? 1 : -1);
 			const sy =
-				(Math.random() * (options.caps.maxSpeed - options.caps.minSpeed) + options.caps.minSpeed) *
+				(Math.random() * (this.options.caps.maxSpeed - this.options.caps.minSpeed) +
+					this.options.caps.minSpeed) *
 				(Math.random() > 0.5 ? 1 : -1);
-			this.boids.push(new Boid(px, py, sx, sy));
+			this.boids.push(new Boid(px, py, sx, sy, this.options));
 		}
 	}
 
@@ -276,9 +292,12 @@ export default class Boids {
 	}
 
 	private update() {
-		if (this.canvas.width != ((window.innerWidth * 7) / 10) * options.bounds.scale)
-			this.updateCanvas();
-		if (this.boids.length != options.boidCount) this.createBoids();
+		if (this.canvas.width != window.innerWidth * this.options.bounds.scale) this.updateCanvas();
+		if (this.boids.length != this.options.boidCount) this.createBoids();
+		if (this.oldOptions.numBoidColors !== this.options.numBoidColors) {
+			this.createBoids();
+			this.oldOptions = { ...this.options };
+		}
 
 		const ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
 		ctx.save();
@@ -287,7 +306,7 @@ export default class Boids {
 		this.spatialHashBoids();
 
 		for (const boid of this.boids) {
-			boid.update(this.spatialhash.query(boid.x, boid.y, options.ranges.visible));
+			boid.update(this.spatialhash.query(boid.x, boid.y, this.options.ranges.visible));
 		}
 
 		for (const boid of this.boids) {
@@ -303,14 +322,21 @@ export default class Boids {
 	}
 
 	updateCanvas() {
-		this.canvas.width = window.innerWidth * options.bounds.scale;
-		this.canvas.height = window.innerHeight * options.bounds.scale;
+		this.canvas.width = window.innerWidth * this.options.bounds.scale;
+		this.canvas.height = window.innerHeight * this.options.bounds.scale;
 
-		options.bounds.width = this.canvas.width;
-		options.bounds.height = this.canvas.height;
+		this.options.bounds.width = this.canvas.width;
+		this.options.bounds.height = this.canvas.height;
 	}
 
 	start() {
 		this.update();
+	}
+
+	reset(options: BoidSimOptions) {
+		this.options = options;
+		this.oldOptions = { ...options };
+		this.createBoids();
+		this.updateCanvas();
 	}
 }
