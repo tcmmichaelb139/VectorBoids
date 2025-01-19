@@ -10,11 +10,11 @@
 	--tp-button-background-color-focus: theme('colors.gray');
 	--tp-button-background-color-hover: theme('colors.gray');
 	--tp-button-foreground-color: theme('colors.fg');
-	--tp-container-background-color: theme('colors.gray');
-	--tp-container-background-color-active: theme('colors.gray');
-	--tp-container-background-color-focus: theme('colors.unknown');
-	--tp-container-background-color-hover: theme('colors.unknown');
-	--tp-container-foreground-color: theme('colors.unknown');
+	--tp-container-background-color: theme('colors.bg-alt');
+	--tp-container-background-color-active: theme('colors.bg-alt');
+	--tp-container-background-color-focus: theme('colors.bg-alt');
+	--tp-container-background-color-hover: theme('colors.bg-alt');
+	--tp-container-foreground-color: theme('colors.purple');
 	--tp-groove-foreground-color: theme('colors.unknown');
 	--tp-input-background-color: theme('colors.bg-alt');
 	--tp-input-background-color-active: theme('colors.gray');
@@ -33,4 +33,16 @@ html {
 
 body {
 	@apply m-0 h-full w-full;
+}
+
+::-webkit-scrollbar {
+	@apply w-1 bg-bg-alt;
+}
+
+::-webkit-scrollbar-thumb {
+	@apply bg-gray hover:bg-gray;
+}
+
+::-webkit-scrollbar-track {
+	@apply bg-bg-alt;
 }

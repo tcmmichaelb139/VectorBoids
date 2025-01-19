@@ -1,10 +1,8 @@
-import type { BoidSimOptions } from './types';
-import { mouse } from '$lib/globals';
-import { Quadtree, Circle } from '@timohausmann/quadtree-ts';
+import { mouse, options } from '$lib/globals';
 
-import { normalize, angle } from './utils';
+import { SpatialHashing, normalize, angle } from './utils';
 
-class Boid extends Circle {
+class Boid {
 	x: number;
 	y: number;
 	vx: number;
@@ -14,11 +12,6 @@ class Boid extends Circle {
 	history: [number, number][] = [];
 
 	constructor(x: number, y: number, vx: number, vy: number) {
-		super({
-			x: x,
-			y: y,
-			r: 11
-		});
 		this.x = x;
 		this.y = y;
 		this.vx = vx;
@@ -27,19 +20,55 @@ class Boid extends Circle {
 		this.ay = 0;
 	}
 
-	private clamp(options: BoidSimOptions) {
+	private clampAcc() {
+		const acceleration = Math.sqrt(this.ax * this.ax + this.ay * this.ay);
+
+		this.ax = (this.ax / acceleration) * Math.max(options.caps.minAcceleration, acceleration);
+		this.ay = (this.ay / acceleration) * Math.max(options.caps.minAcceleration, acceleration);
+
+		this.ax = (this.ax / acceleration) * Math.min(acceleration, options.caps.maxAcceleration);
+		this.ay = (this.ay / acceleration) * Math.min(acceleration, options.caps.maxAcceleration);
+
+		if (acceleration === 0) this.ax = this.ay = 0;
+	}
+
+	private clampVel() {
 		const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
 
-		this.vx = (this.vx / speed) * Math.max(options.minSpeed, speed);
-		this.vy = (this.vy / speed) * Math.max(options.minSpeed, speed);
+		this.vx = (this.vx / speed) * Math.max(options.caps.minSpeed, speed);
+		this.vy = (this.vy / speed) * Math.max(options.caps.minSpeed, speed);
 
-		this.vx = (this.vx / speed) * Math.min(speed, options.maxSpeed);
-		this.vy = (this.vy / speed) * Math.min(speed, options.maxSpeed);
+		this.vx = (this.vx / speed) * Math.min(speed, options.caps.maxSpeed);
+		this.vy = (this.vy / speed) * Math.min(speed, options.caps.maxSpeed);
 
 		if (speed === 0) this.vx = this.vy = 0;
 	}
 
-	public update(boids: Boid[], canvas: HTMLCanvasElement, options: BoidSimOptions) {
+	private avoidBounds(distance: number) {
+		if (distance < options.bounds.margins) {
+			return options.factors.turn;
+		} else {
+			return options.factors.turn / distance;
+		}
+	}
+
+	private mouseInteractions() {
+		// update based on mouse
+		const dx = mouse.x - this.x;
+		const dy = mouse.y - this.y;
+		const distance = Math.sqrt(dx * dx + dy * dy);
+		if (distance < options.ranges.visible) {
+			if (options.mouse === 'avoid') {
+				this.ax -= (dx / distance) * options.factors.mouse;
+				this.ay -= (dy / distance) * options.factors.mouse;
+			} else if (options.mouse === 'attract') {
+				this.ax += (dx / distance) * options.factors.mouse;
+				this.ay += (dy / distance) * options.factors.mouse;
+			}
+		}
+	}
+
+	update(boids: Boid[]) {
 		let separationDxDy: [number, number] = [0, 0];
 		let alignmentVel: [number, number] = [0, 0];
 		let cohesionDxDy: [number, number] = [0, 0];
@@ -51,23 +80,27 @@ class Boid extends Circle {
 			const dx = boid.x - this.x;
 			const dy = boid.y - this.y;
 
-			if (angle([dx, dy], [this.vx, this.vy]) > options.viewAngle * (Math.PI / 360)) {
+			const distance = dx * dx + dy * dy;
+
+			if (
+				angle([dx, dy], [this.vx, this.vy]) > options.viewAngle * (Math.PI / 360) ||
+				distance > options.ranges.visible * options.ranges.visible
+			) {
 				continue;
 			}
 
-			const distance = Math.sqrt(dx * dx + dy * dy);
-			if (options.ranges.protected <= distance && distance <= options.ranges.visible) {
-				alignmentVel[0] += boid.vx;
-				alignmentVel[1] += boid.vy;
+			alignmentVel[0] += boid.vx;
+			alignmentVel[1] += boid.vy;
 
-				cohesionDxDy[0] += boid.x;
-				cohesionDxDy[1] += boid.y;
+			cohesionDxDy[0] += boid.x;
+			cohesionDxDy[1] += boid.y;
 
-				numBoidsVisible++;
-			} else if (distance < options.ranges.protected) {
+			if (distance < options.ranges.separation * options.ranges.separation) {
 				separationDxDy[0] -= dx / distance;
 				separationDxDy[1] -= dy / distance;
 			}
+
+			numBoidsVisible++;
 		}
 
 		if (numBoidsVisible > 0) {
@@ -89,21 +122,14 @@ class Boid extends Circle {
 		separationDxDy = normalize(separationDxDy);
 		cohesionDxDy = normalize(cohesionDxDy);
 
-		// update based on mouse
-		const dx = mouse.x - this.x;
-		const dy = mouse.y - this.y;
-		const distance = Math.sqrt(dx * dx + dy * dy);
-		if (distance < options.ranges.visible) {
-			if (options.mouse === 'avoid') {
-				this.ax -= (dx / distance) * options.factors.mouse;
-				this.ay -= (dy / distance) * options.factors.mouse;
-			} else if (options.mouse === 'attract') {
-				this.ax += (dx / distance) * options.factors.mouse;
-				this.ay += (dy / distance) * options.factors.mouse;
-			}
-		}
+		// update acceleration
+		this.ax = -this.vx * options.factors.drag;
+		this.ay = -this.vy * options.factors.drag;
 
-		// update velocity based on seperation
+		// mouse interactions
+		this.mouseInteractions();
+
+		// update velocity based on separation
 		this.ax += separationDxDy[0] * options.factors.separation;
 		this.ay += separationDxDy[1] * options.factors.separation;
 
@@ -116,33 +142,31 @@ class Boid extends Circle {
 		this.ay += cohesionDxDy[1] * options.factors.cohesion;
 
 		// update based on bounds
-		if (this.x < options.bounds.margin) this.ax += options.factors.turn;
-		if (this.x > canvas.width - options.bounds.margin) this.ax -= options.factors.turn;
-		if (this.y < options.bounds.margin) this.ay += options.factors.turn;
-		if (this.y > canvas.height - options.bounds.margin) this.ay -= options.factors.turn;
+		this.ax += this.avoidBounds(this.x);
+		this.ax -= this.avoidBounds(options.bounds.width - this.x);
+		this.ay += this.avoidBounds(this.y);
+		this.ay -= this.avoidBounds(options.bounds.height - this.y);
 	}
 
-	public pushUpdate(options: BoidSimOptions) {
-		// update velocity
-		this.vx += this.ax * options.factors.regularization;
-		this.vy += this.ay * options.factors.regularization;
-
-		this.clamp(options);
+	pushUpdate() {
+		this.clampAcc();
 
 		// update position
-		this.x += this.vx;
-		this.y += this.vy;
+		this.x += this.vx + 0.5 * this.ax;
+		this.y += this.vy + 0.5 * this.ay;
+
+		// update velocity
+		this.vx += this.ax;
+		this.vy += this.ay;
+
+		this.clampVel();
 
 		// update history
 		this.history.push([this.x, this.y]);
 		while (this.history.length > options.trailLength) this.history.shift();
-
-		// update acceleration
-		this.ax = 0;
-		this.ay = 0;
 	}
 
-	public draw(ctx: CanvasRenderingContext2D, options: BoidSimOptions) {
+	draw(ctx: CanvasRenderingContext2D) {
 		if (!ctx) {
 			throw new Error('Could not get 2d context from canvas');
 		}
@@ -163,11 +187,17 @@ class Boid extends Circle {
 			ctx.closePath();
 		}
 
-		// draw protected range
-		if (options.show.protectedRange) {
+		// draw separation range
+		if (options.show.separationRange) {
 			ctx.beginPath();
-			ctx.strokeStyle = options.colors.protected;
-			ctx.arc(this.x, this.y, options.ranges.protected, 0, 2 * Math.PI);
+			ctx.strokeStyle = options.colors.separation;
+			ctx.arc(
+				this.x,
+				this.y,
+				Math.min(options.ranges.separation, options.ranges.visible),
+				0,
+				2 * Math.PI
+			);
 			ctx.stroke();
 			ctx.closePath();
 		}
@@ -175,135 +205,112 @@ class Boid extends Circle {
 		if (options.trailLength > 0) {
 			ctx.beginPath();
 			ctx.strokeStyle = options.colors.trail;
-			ctx.lineWidth = 3;
+			ctx.lineWidth = 1;
 			ctx.moveTo(this.history[0][0], this.history[0][1]);
 			for (let i = 0; i < this.history.length - 1; i++) {
 				const xc = (this.history[i][0] + this.history[i + 1][0]) / 2;
 				const yc = (this.history[i][1] + this.history[i + 1][1]) / 2;
 				ctx.quadraticCurveTo(this.history[i][0], this.history[i][1], xc, yc);
 			}
+
 			ctx.stroke();
 			ctx.closePath();
 		}
 
-		ctx.beginPath();
-		const angle = Math.atan2(this.vy, this.vx);
-		const p = new Path2D(
-			'M0.499866 0.809012L8.88195 5L0.499867 9.19099L0.499867 8.89179C0.667289 8.77399 0.858966 8.64601 1.06997 8.50512C1.14824 8.45285 1.22918 8.39881 1.31252 8.34285C1.70692 8.07806 2.14199 7.77885 2.54526 7.45479C2.94645 7.13241 3.33479 6.77088 3.62594 6.37546C3.91651 5.98081 4.13623 5.51682 4.13623 5.00001C4.13623 4.48321 3.91651 4.01921 3.62594 3.62456C3.33479 3.22914 2.94645 2.8676 2.54526 2.54522C2.142 2.22116 1.70692 1.92195 1.31253 1.65715C1.22916 1.60118 1.14821 1.54712 1.06991 1.49484C0.858932 1.35397 0.667274 1.22599 0.499866 1.10821L0.499866 0.809012Z'
-			// 'M20.2315 12.3684L1.86287 20.6155C1.22314 20.9028 0.499999 20.4347 0.499999 19.7335C0.499999 19.4264 0.642123 19.1491 0.878881 18.9845C1.2196 18.7476 1.60369 18.4911 2.01301 18.2179C3.14616 17.4614 4.47275 16.5758 5.60821 15.6165C6.38648 14.959 7.10176 14.2461 7.62524 13.4864C8.1489 12.7265 8.5 11.8913 8.5 11C8.5 10.1088 8.1489 9.27358 7.62524 8.51365C7.10176 7.75398 6.38648 7.04106 5.60821 6.38354C4.47273 5.42423 3.14612 4.53859 2.01296 3.78209C1.60365 3.50884 1.21958 3.25243 0.878878 3.01549C0.64212 2.85084 0.499998 2.5736 0.499998 2.2665C0.499998 1.56525 1.22313 1.09725 1.86286 1.38447L20.2315 9.63162C21.4123 10.1618 21.4123 11.8383 20.2315 12.3684Z'
-		);
-		const p2 = new Path2D();
-		p2.addPath(p, new DOMMatrix().translate(-5, -5));
-		// p2.addPath(p, new DOMMatrix().translate(-7, -11));
+		const unitVel = normalize([this.vx, this.vy]);
 
-		ctx.translate(this.x, this.y);
-		ctx.rotate(angle);
-		ctx.fillStyle = options.colors.boid;
-		ctx.fill(p2);
-		ctx.strokeStyle = options.colors.outline;
-		ctx.lineWidth = 1;
-		// ctx.stroke(p2);
-		ctx.rotate(-angle);
-		ctx.translate(-this.x, -this.y);
+		ctx.beginPath();
+		ctx.moveTo(this.x - unitVel[0] * 3 + unitVel[1] * 3, this.y - unitVel[1] * 3 - unitVel[0] * 3);
+		ctx.lineTo(this.x + unitVel[0] * 3, this.y + unitVel[1] * 3);
+		ctx.lineTo(this.x - unitVel[0] * 3 - unitVel[1] * 3, this.y - unitVel[1] * 3 + unitVel[0] * 3);
+		ctx.strokeStyle = options.colors.boid;
+		ctx.lineWidth = 2;
+		ctx.stroke();
 		ctx.closePath();
 	}
 }
 
 export default class Boids {
 	private canvas: HTMLCanvasElement;
-	private options: BoidSimOptions;
 	private boids: Boid[];
-	private quadtree: Quadtree<Boid>;
+	private spatialhash: SpatialHashing<Boid>;
 
-	constructor(canvas: HTMLCanvasElement, options: BoidSimOptions) {
+	constructor(canvas: HTMLCanvasElement) {
 		this.canvas = canvas;
-		this.options = options;
 		this.boids = [];
 
 		this.updateCanvas();
 		this.createBoids();
 
-		this.quadtree = new Quadtree({
-			x: -canvas.width * 5,
-			y: -canvas.height * 5,
-			width: canvas.width * 10,
-			height: canvas.height * 10,
-			maxObjects: 10,
-			maxLevels: 10
-		});
+		this.spatialhash = new SpatialHashing(
+			25,
+			this.canvas.width * 2,
+			this.canvas.height * 2,
+			this.canvas.width * 4,
+			this.canvas.height * 4
+		);
 	}
 
 	private createBoids() {
 		this.boids = [];
-		for (let i = 0; i < this.options.boidCount; i++) {
+		for (let i = 0; i < options.boidCount; i++) {
 			const px =
-				Math.random() * (this.canvas.width - 2 * this.options.bounds.margin) +
-				this.options.bounds.margin;
+				Math.random() * (this.canvas.width - 2 * options.bounds.margins) + options.bounds.margins;
 			const py =
-				Math.random() * (this.canvas.height - 2 * this.options.bounds.margin) +
-				this.options.bounds.margin;
+				Math.random() * (this.canvas.height - 2 * options.bounds.margins) + options.bounds.margins;
 			const sx =
-				(Math.random() * (this.options.maxSpeed - this.options.minSpeed) + this.options.minSpeed) *
+				(Math.random() * (options.caps.maxSpeed - options.caps.minSpeed) + options.caps.minSpeed) *
 				(Math.random() > 0.5 ? 1 : -1);
 			const sy =
-				(Math.random() * (this.options.maxSpeed - this.options.minSpeed) + this.options.minSpeed) *
+				(Math.random() * (options.caps.maxSpeed - options.caps.minSpeed) + options.caps.minSpeed) *
 				(Math.random() > 0.5 ? 1 : -1);
 			this.boids.push(new Boid(px, py, sx, sy));
 		}
 	}
 
-	private newQuadTree() {
-		this.quadtree.clear();
+	private spatialHashBoids() {
+		this.spatialhash.clear();
 		for (const boid of this.boids) {
-			this.quadtree.insert(boid);
+			this.spatialhash.insert(boid, boid.x, boid.y);
 		}
 	}
 
 	private update() {
-		if (this.canvas.width != ((window.innerWidth * 7) / 10) * this.options.bounds.scale)
+		if (this.canvas.width != ((window.innerWidth * 7) / 10) * options.bounds.scale)
 			this.updateCanvas();
-		if (this.boids.length != this.options.boidCount) this.createBoids();
+		if (this.boids.length != options.boidCount) this.createBoids();
 
 		const ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
 		ctx.save();
 		ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-		this.newQuadTree();
+		this.spatialHashBoids();
 
 		for (const boid of this.boids) {
-			// console.log(
-			// 	this.quadtree.retrieve(new Circle({ x: boid.x, y: boid.y, r: this.options.ranges.visible }))
-			// );
-			boid.update(
-				this.quadtree.retrieve(
-					new Circle({ x: boid.x, y: boid.y, r: this.options.ranges.visible })
-				),
-				this.canvas,
-				this.options
-			);
+			boid.update(this.spatialhash.query(boid.x, boid.y, options.ranges.visible));
 		}
 
 		for (const boid of this.boids) {
-			boid.pushUpdate(this.options);
+			boid.pushUpdate();
 		}
 
 		for (const boid of this.boids) {
-			boid.draw(ctx, this.options);
+			boid.draw(ctx);
 		}
 
 		ctx.restore();
 		requestAnimationFrame(this.update.bind(this));
 	}
 
-	public updateCanvas() {
-		this.canvas.width = ((window.innerWidth * 7) / 10) * this.options.bounds.scale;
-		this.canvas.height = ((window.innerHeight * 9) / 10) * this.options.bounds.scale;
+	updateCanvas() {
+		this.canvas.width = window.innerWidth * options.bounds.scale;
+		this.canvas.height = window.innerHeight * options.bounds.scale;
 
-		this.options.bounds.width = this.canvas.width;
-		this.options.bounds.height = this.canvas.height;
+		options.bounds.width = this.canvas.width;
+		options.bounds.height = this.canvas.height;
 	}
 
-	public start() {
+	start() {
 		this.update();
 	}
 }

@@ -1,61 +1,21 @@
 <script lang="ts">
-	import { Slider, List, Checkbox, Color, FpsGraph } from 'svelte-tweakpane-ui';
+	import { Slider, List, Checkbox, Color, FpsGraph, Folder, Pane } from 'svelte-tweakpane-ui';
 	import { onMount } from 'svelte';
 
 	import Boids from '$lib/boids';
-	import type { BoidSimOptions } from '$lib/types';
-	import { mouse } from '$lib/globals';
-
-	const options: BoidSimOptions = {
-		boidCount: 100,
-		bounds: {
-			width: 0,
-			height: 0,
-			margin: 0,
-			scale: 1
-		},
-		ranges: {
-			protected: 25,
-			visible: 100
-		},
-		factors: {
-			separation: 0.05,
-			alignment: 0.05,
-			cohesion: 0.025,
-			regularization: 0.75,
-			mouse: 0.05,
-			turn: 0.2
-		},
-		maxSpeed: 2.5,
-		minSpeed: 1,
-		viewAngle: 360,
-		trailLength: 0,
-		mouse: 'none',
-		show: {
-			protectedRange: false,
-			visibleRange: false
-		},
-		colors: {
-			background: '#1a1b26',
-			boid: '#bb9af7',
-			outline: '#565f89',
-			trail: '#bb9af7',
-			protected: '#f7768e',
-			visible: '#9ece6a'
-		}
-	};
+	import { mouse, options } from '$lib/globals';
 
 	let fpsMeter = 60;
 
 	let boids: Boids;
 
 	onMount(() => {
-		options.bounds.margin = window.innerWidth / 30;
+		options.bounds.margins = window.innerWidth / 30;
 
 		const canvas = document.getElementById('boids') as HTMLCanvasElement;
 		if (!canvas) return console.log('Canvas not found');
 
-		boids = new Boids(canvas, options);
+		boids = new Boids(canvas);
 		boids.start();
 	});
 </script>
@@ -63,7 +23,7 @@
 <div class="flex h-full items-center justify-center">
 	<canvas
 		id="boids"
-		class="h-[90vh] w-[70vw] border-2 border-gray"
+		class="h-full w-full border-gray"
 		style="background-color: {options.colors.background}"
 		onmousemove={(e) => {
 			const rect = (e.target as HTMLCanvasElement)?.getBoundingClientRect();
@@ -71,78 +31,116 @@
 			mouse.y = (e.clientY - rect.top) * options.bounds.scale;
 		}}
 	></canvas>
-	<div class="ml-10 h-[90vh] w-[20vw] border-2 border-gray">
-		<Slider bind:value={options.boidCount} label="Boid Count" min={1} max={2000} step={1} />
-		<Slider
-			bind:value={options.bounds.margin}
-			label="Bounds Margin"
-			min={0}
-			max={Math.min(options.bounds.width / 2, options.bounds.height / 2)}
-			step={1}
-		/>
-		<Slider bind:value={options.bounds.scale} label="Bounds Scale" min={0.5} max={5} step={0.01} />
-		<Slider
-			bind:value={options.ranges.protected}
-			label="Protected Range"
-			min={1}
-			max={500}
-			step={1}
-		/>
-		<Slider bind:value={options.ranges.visible} label="Visible Range" min={1} max={500} step={1} />
-		<Slider
-			bind:value={options.factors.separation}
-			label="Seperation Factor"
-			min={0}
-			max={1}
-			step={0.01}
-		/>
-		<Slider
-			bind:value={options.factors.alignment}
-			label="Alignment Factor"
-			min={0}
-			max={1}
-			step={0.01}
-		/>
-		<Slider
-			bind:value={options.factors.cohesion}
-			label="Cohesion Factor"
-			min={0}
-			max={1}
-			step={0.01}
-		/>
-		<Slider bind:value={options.factors.turn} label="Turn Factor" min={0} max={10} step={0.01} />
-		<Slider
-			bind:value={options.factors.regularization}
-			label="Regularization Factor"
-			min={0}
-			max={1}
-			step={0.01}
-		/>
-		<Slider bind:value={options.factors.mouse} label="Mouse Factor" min={0} max={1} step={0.01} />
-		<Slider bind:value={options.maxSpeed} label="Max Speed" min={0} max={20} step={0.1} />
-		<Slider bind:value={options.minSpeed} label="Min Speed" min={0} max={20} step={0.1} />
-		<Slider bind:value={options.viewAngle} label="View Angle" min={0} max={360} step={1} />
-		<Slider bind:value={options.trailLength} label="Trail Length" min={0} max={250} step={1} />
-		<List
-			bind:value={options.mouse}
-			label="Mouse Function"
-			options={{ None: 'none', Avoid: 'avoid', Attract: 'attract' }}
-		/>
-		<Checkbox bind:value={options.show.protectedRange} label="Show Protected Range" />
-		<Checkbox bind:value={options.show.visibleRange} label="Show Visible Range" />
-		<Color bind:value={options.colors.background} label="Background Color" />
-		<Color bind:value={options.colors.boid} label="Boid Color" />
-		<Color bind:value={options.colors.outline} label="Outline Color" />
-		<Color bind:value={options.colors.trail} label="Trail Color" />
-		<Color bind:value={options.colors.protected} label="Protected Color" />
-		<Color bind:value={options.colors.visible} label="Visible Color" />
+	<Pane
+		x={10}
+		y={10}
+		expanded={false}
+		storePositionLocally={false}
+		width={300}
+		title="Boid Settings"
+	>
+		<Slider bind:value={options.boidCount} label="Boid Count" min={1} max={5000} step={1} />
+		<Folder title="Bounds" expanded={false}>
+			<Slider
+				bind:value={options.bounds.margins}
+				label="Margins"
+				min={0}
+				max={Math.max(options.bounds.width, options.bounds.width) / 2}
+				step={1}
+			/>
+			<Slider
+				bind:value={options.bounds.scale}
+				label="Bounds Scale"
+				min={0.5}
+				max={2}
+				step={0.01}
+			/>
+		</Folder>
+		<Folder title="Ranges" expanded={false}>
+			<Slider
+				bind:value={options.ranges.separation}
+				label="Separation Range"
+				min={0}
+				max={Math.max(options.bounds.width, options.bounds.width)}
+				step={1}
+			/>
+			<Slider
+				bind:value={options.ranges.visible}
+				label="Visible Range"
+				min={0}
+				max={Math.max(options.bounds.width, options.bounds.width)}
+				step={1}
+			/>
+		</Folder>
+		<Folder title="Factors" expanded={false}>
+			<Slider
+				bind:value={options.factors.separation}
+				label="Separation Factor"
+				min={0}
+				max={5}
+				step={0.01}
+			/>
+			<Slider
+				bind:value={options.factors.alignment}
+				label="Alignment Factor"
+				min={0}
+				max={5}
+				step={0.01}
+			/>
+			<Slider
+				bind:value={options.factors.cohesion}
+				label="Cohesion Factor"
+				min={0}
+				max={1}
+				step={0.01}
+			/>
+			<Slider bind:value={options.factors.drag} label="Drag Factor" min={0} max={1} step={0.01} />
+			<Slider bind:value={options.factors.turn} label="Turn Factor" min={0} max={10} step={0.1} />
+			<Slider bind:value={options.factors.mouse} label="Mouse Factor" min={0} max={1} step={0.01} />
+		</Folder>
+		<Folder title="Caps" expanded={false}>
+			<Slider bind:value={options.caps.maxSpeed} label="Max Speed" min={0} max={20} step={0.1} />
+			<Slider bind:value={options.caps.minSpeed} label="Min Speed" min={0} max={20} step={0.1} />
+			<Slider
+				bind:value={options.caps.maxAcceleration}
+				label="Max Acceleration"
+				min={0}
+				max={5}
+				step={0.01}
+			/>
+			<Slider
+				bind:value={options.caps.minAcceleration}
+				label="Min Acceleration"
+				min={0}
+				max={5}
+				step={0.01}
+			/>
+		</Folder>
+		<Folder title="Miscellaneous" expanded={false}>
+			<Slider bind:value={options.viewAngle} label="View Angle" min={0} max={360} step={1} />
+			<List
+				bind:value={options.mouse}
+				label="Mouse Function"
+				options={{ None: 'none', Avoid: 'avoid', Attract: 'attract' }}
+			/>
+		</Folder>
+		<Folder title="Visuals" expanded={false}>
+			<Slider bind:value={options.trailLength} label="Trail Length" min={0} max={250} step={1} />
+			<Checkbox bind:value={options.show.separationRange} label="Show Separation Range" />
+			<Checkbox bind:value={options.show.visibleRange} label="Show Visible Range" />
+			<Color bind:value={options.colors.background} label="Background Color" />
+			<Color bind:value={options.colors.boid} label="Boid Color" />
+			<Color bind:value={options.colors.trail} label="Trail Color" />
+			<Color bind:value={options.colors.separation} label="Separation Range Color" />
+			<Color bind:value={options.colors.visible} label="Visible Range Color" />
+		</Folder>
 		<FpsGraph
 			max={fpsMeter}
 			on:change={(e) => {
 				fpsMeter = Math.max(fpsMeter, Math.round(e.detail + 50));
 			}}
 		/>
-	</div>
+	</Pane>
 </div>
 
 <svelte:window onresize={() => boids.updateCanvas()} />

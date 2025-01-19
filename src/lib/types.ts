@@ -3,36 +3,39 @@ export interface BoidSimOptions {
 	bounds: {
 		width: number;
 		height: number;
-		margin: number;
+		margins: number;
 		scale: number;
 	};
 	ranges: {
-		protected: number;
+		separation: number;
 		visible: number;
 	};
 	factors: {
 		separation: number;
 		alignment: number;
 		cohesion: number;
-		regularization: number;
+		drag: number;
 		mouse: number;
 		turn: number;
 	};
-	maxSpeed: number;
-	minSpeed: number;
+	caps: {
+		maxSpeed: number;
+		minSpeed: number;
+		maxAcceleration: number;
+		minAcceleration: number;
+	};
 	viewAngle: number;
 	trailLength: number;
 	mouse: string;
 	show: {
-		protectedRange: boolean;
+		separationRange: boolean;
 		visibleRange: boolean;
 	};
 	colors: {
 		background: string;
 		boid: string;
-		outline: string;
 		trail: string;
-		protected: string;
+		separation: string;
 		visible: string;
 	};
 }
