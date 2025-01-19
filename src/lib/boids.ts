@@ -156,16 +156,16 @@ class Boid {
 		this.ay -= this.avoidBounds(this.options.bounds.height - this.y);
 	}
 
-	pushUpdate() {
+	pushUpdate(dt: number) {
 		this.clampAcc();
 
 		// update position
-		this.x += this.vx + 0.5 * this.ax;
-		this.y += this.vy + 0.5 * this.ay;
+		this.x += this.vx * dt + 0.5 * this.ax * (dt * dt);
+		this.y += this.vy * dt + 0.5 * this.ay * (dt * dt);
 
 		// update velocity
-		this.vx += this.ax;
-		this.vy += this.ay;
+		this.vx += this.ax * dt;
+		this.vy += this.ay * dt;
 
 		this.clampVel();
 
@@ -244,12 +244,14 @@ export default class Boids {
 	private options: BoidSimOptions;
 	private oldOptions: BoidSimOptions;
 	private spatialhash: SpatialHashing<Boid>;
+	private timestep: number;
 
 	constructor(canvas: HTMLCanvasElement, options: BoidSimOptions) {
 		this.canvas = canvas;
 		this.boids = [];
 		this.options = options;
 		this.oldOptions = { ...options };
+		this.timestep = 0;
 
 		this.updateCanvas();
 		this.createBoids();
@@ -291,13 +293,15 @@ export default class Boids {
 		}
 	}
 
-	private update() {
+	private update(time: number) {
 		if (this.canvas.width != window.innerWidth * this.options.bounds.scale) this.updateCanvas();
 		if (this.boids.length != this.options.boidCount) this.createBoids();
 		if (this.oldOptions.numBoidColors !== this.options.numBoidColors) {
 			this.createBoids();
 			this.oldOptions = { ...this.options };
 		}
+
+		const dt = (time - this.timestep) / 16;
 
 		const ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
 		ctx.save();
@@ -310,15 +314,17 @@ export default class Boids {
 		}
 
 		for (const boid of this.boids) {
-			boid.pushUpdate();
+			boid.pushUpdate(dt);
 		}
 
 		for (const boid of this.boids) {
 			boid.draw(ctx);
 		}
 
+		this.timestep = time;
+
 		ctx.restore();
-		requestAnimationFrame(this.update.bind(this));
+		requestAnimationFrame((t: number) => this.update(t));
 	}
 
 	updateCanvas() {
@@ -330,7 +336,8 @@ export default class Boids {
 	}
 
 	start() {
-		this.update();
+		this.timestep = performance.now();
+		this.update(this.timestep);
 	}
 
 	reset(options: BoidSimOptions) {
