@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import {
 		Pane,
 		Folder,
@@ -7,62 +8,29 @@
 		Checkbox,
 		Color,
 		ButtonGrid,
+		Textarea,
 		FpsGraph,
 		type ButtonGridClickEvent
 	} from 'svelte-tweakpane-ui';
-	import { onMount } from 'svelte';
+	// import { queryParameters } from 'sveltekit-search-params';
 
 	import Boids from '$lib/boids';
 	import { mouse } from '$lib/globals';
-	import { getBoidSimOptions, numBoidSimOptions, updateBoidOptions } from '$lib/boidoptions';
+	import {
+		getBoidSimOptions,
+		numBoidSimOptions,
+		updateBoidOptions,
+		getVectorFieldOptions,
+		numVectorFieldOptions
+	} from '$lib/boidoptions';
 	import type { BoidSimOptions } from '$lib/types';
 
 	let fpsMeter = 60;
 
 	let boids: Boids;
 
-	let options: BoidSimOptions = {
-		boidCount: 500,
-		numBoidColors: 1,
-		bounds: {
-			width: 0,
-			height: 0,
-			margins: 50,
-			scale: 1
-		},
-		ranges: {
-			separation: 50,
-			visible: 50
-		},
-		factors: {
-			separation: 1.0,
-			alignment: 0.75,
-			cohesion: 0.75,
-			drag: 0.25,
-			mouse: 0.5,
-			turn: 5
-		},
-		caps: {
-			maxSpeed: 2.5,
-			minSpeed: 2.5,
-			maxAcceleration: 0.15,
-			minAcceleration: 0.01
-		},
-		viewAngle: 360,
-		mouse: 'none',
-		followColor: true,
-		trailLength: 10,
-		show: {
-			separationRange: false,
-			visibleRange: false
-		},
-		colors: {
-			background: '#1a1b26',
-			boids: ['#bb9af7'],
-			separation: '#f7768e',
-			visible: '#9ece6a'
-		}
-	};
+	let options: BoidSimOptions = getBoidSimOptions(0);
+	options.vectorField = getVectorFieldOptions(1);
 
 	onMount(() => {
 		options = updateBoidOptions(options);
@@ -194,16 +162,27 @@
 			<Folder title="Show" expanded={false}>
 				<Checkbox bind:value={options.show.separationRange} label="Separation Range" />
 				<Checkbox bind:value={options.show.visibleRange} label="Visible Range" />
+				<Checkbox bind:value={options.show.vectorField} label="Vector Field" />
 			</Folder>
 			<Color bind:value={options.colors.background} label="Background Color" />
 			<Folder title="Boid Colors" expanded={false}>
-				{#each options.colors.boids as color, i}
+				{#each options.colors.boids as _, i}
 					<Color bind:value={options.colors.boids[i]} label={`Boid Color ${i + 1}`} />
 				{/each}
 			</Folder>
 			<Folder title="Range Colors" expanded={false}>
 				<Color bind:value={options.colors.separation} label="Separation Range Color" />
 				<Color bind:value={options.colors.visible} label="Visible Range Color" />
+			</Folder>
+			<Folder title="Vector Field " expanded={false}>
+				<Color bind:value={options.colors.vectorField} label="Vector Field Color" />
+				<Slider
+					bind:value={options.vectorFieldGridWidth}
+					label="Vector Field Grid Width"
+					min={5}
+					max={250}
+					step={1}
+				/>
 			</Folder>
 		</Folder>
 		<Folder title="Presets">
@@ -215,6 +194,27 @@
 				buttons={Array.from({ length: numBoidSimOptions() }, (_, i) => (i + 1).toString())}
 			/></Folder
 		>
+		<Folder title="Vector Field" expanded={false}>
+			<Slider
+				bind:value={options.vectorField.factor}
+				label="Vector Field Factor"
+				min={0}
+				max={10}
+				step={0.000001}
+			/>
+			<Textarea bind:value={options.vectorField.x} label="Vector Field X" />
+			<Textarea bind:value={options.vectorField.y} label="Vector Field Y" />
+			<Checkbox bind:value={options.vectorField.valid} label="Valid Vector Field" disabled={true} />
+			<Folder title="Presets" expanded={false}>
+				<ButtonGrid
+					on:click={(event: ButtonGridClickEvent) => {
+						options.vectorField = getVectorFieldOptions(parseInt(event.detail.label) - 1);
+						boids.updateVectorField(options.vectorField);
+					}}
+					buttons={Array.from({ length: numVectorFieldOptions() }, (_, i) => (i + 1).toString())}
+				/></Folder
+			>
+		</Folder>
 		<FpsGraph
 			max={fpsMeter}
 			on:change={(e) => {

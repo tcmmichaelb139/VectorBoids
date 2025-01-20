@@ -28,7 +28,7 @@
 }
 
 html {
-	@apply m-0 h-full w-full bg-bg;
+	@apply m-0 h-full w-full bg-bg text-fg;
 }
 
 body {
@@ -47,6 +47,11 @@ body {
 	@apply bg-bg-alt;
 }
 
+/* svelte-tweakpane-ui */
 .draggable-container {
 	@apply border border-gray;
+}
+
+textarea::placeholder {
+	@apply text-gray;
 }

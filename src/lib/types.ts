@@ -1,3 +1,14 @@
+export interface VectorField {
+	factor: number;
+	x: string;
+	y: string;
+	valid: boolean;
+	compiled: {
+		x?: (x: number, y: number) => number;
+		y?: (x: number, y: number) => number;
+	};
+}
+
 export interface BoidSimOptions {
 	boidCount: number;
 	numBoidColors: number;
@@ -29,14 +40,18 @@ export interface BoidSimOptions {
 	mouse: string;
 	followColor: boolean;
 	trailLength: number;
+	vectorFieldGridWidth: number;
 	show: {
 		separationRange: boolean;
 		visibleRange: boolean;
+		vectorField: boolean;
 	};
 	colors: {
 		background: string;
 		boids: string[];
 		separation: string;
 		visible: string;
+		vectorField: string;
 	};
+	vectorField: VectorField;
 }

@@ -1,3 +1,6 @@
+import { compile } from 'mathjs';
+import type { BoidSimOptions } from './types';
+
 export class SpatialHashing<T> {
 	private grid: T[][][];
 	private offset: [number, number];
@@ -49,13 +52,14 @@ export class SpatialHashing<T> {
 	}
 }
 
-function magnitude(vector: [number, number]): number {
-	return Math.sqrt(vector[0] * vector[0] + vector[1] * vector[1]);
+export function magnitude(vector: { x: number; y: number }): number {
+	return Math.sqrt(vector.x * vector.x + vector.y * vector.y);
 }
-export function normalize(vector: [number, number]): [number, number] {
+
+export function normalize(vector: { x: number; y: number }): { x: number; y: number } {
 	const mag = magnitude(vector);
 	if (mag === 0) return vector;
-	return [vector[0] / mag, vector[1] / mag];
+	return { x: vector.x / mag, y: vector.y / mag };
 }
 
 export function angle(v1: [number, number], v2: [number, number]): number {
@@ -66,4 +70,52 @@ export function angle(v1: [number, number], v2: [number, number]): number {
 
 export function randomInt(min: number, max: number): number {
 	return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+export function compileEquation(
+	equation: string,
+	options: BoidSimOptions
+): ((x: number, y: number) => number) | undefined {
+	if (!equation) return undefined;
+	try {
+		const compiled = compile(equation);
+		options.vectorField.valid = true;
+		return (x: number, y: number) => compiled.evaluate({ x, y });
+	} catch (e) {
+		options.vectorField.valid = false;
+	}
+	return undefined;
+}
+
+export function getVectorFieldForce(
+	xy: { x: number; y: number },
+	options: BoidSimOptions
+): { x: number; y: number } {
+	if (!options.vectorField.compiled.x || !options.vectorField.compiled.y) {
+		return { x: NaN, y: NaN };
+	}
+
+	xy.y = -xy.y;
+
+	const force: { x: number; y: number } = { x: 0, y: 0 };
+
+	try {
+		force.x = options.vectorField.compiled.x!(xy.x, xy.y);
+		if (typeof force.x !== 'number') {
+			throw new Error('Complex number');
+		}
+	} catch (e) {
+		force.x = NaN;
+	}
+
+	try {
+		force.y = -options.vectorField.compiled.y!(xy.x, xy.y);
+		if (typeof force.y !== 'number') {
+			throw new Error('Complex number');
+		}
+	} catch (e) {
+		force.y = NaN;
+	}
+
+	return force;
 }

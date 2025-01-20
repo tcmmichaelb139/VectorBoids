@@ -1,7 +1,14 @@
-import type { BoidSimOptions } from '$lib/types';
+import type { BoidSimOptions, VectorField } from '$lib/types';
 import { mouse } from '$lib/globals';
 
-import { SpatialHashing, normalize, angle, randomInt } from './utils';
+import {
+	SpatialHashing,
+	normalize,
+	angle,
+	randomInt,
+	getVectorFieldForce,
+	compileEquation
+} from './utils';
 
 class Boid {
 	x: number;
@@ -34,6 +41,9 @@ class Boid {
 		this.ax = (this.ax / acceleration) * Math.min(acceleration, this.options.caps.maxAcceleration);
 		this.ay = (this.ay / acceleration) * Math.min(acceleration, this.options.caps.maxAcceleration);
 
+		if (isNaN(this.ax)) this.ax = 0;
+		if (isNaN(this.ay)) this.ay = 0;
+
 		if (acceleration === 0) this.ax = this.ay = 0;
 	}
 
@@ -57,6 +67,15 @@ class Boid {
 		}
 	}
 
+	private isOutsideBounds() {
+		return (
+			this.x < this.options.bounds.margins ||
+			this.x > this.options.bounds.width - this.options.bounds.margins ||
+			this.y < this.options.bounds.margins ||
+			this.y > this.options.bounds.height - this.options.bounds.margins
+		);
+	}
+
 	private mouseInteractions() {
 		// update based on mouse
 		const dx = mouse.x - this.x;
@@ -73,10 +92,27 @@ class Boid {
 		}
 	}
 
+	private getVectorField() {
+		const xy = {
+			x: this.x - this.options.bounds.width / 2,
+			y: this.y - this.options.bounds.height / 2
+		};
+
+		if (!this.isOutsideBounds()) {
+			const force = getVectorFieldForce(xy, this.options);
+			if (isNaN(force.x) || isNaN(force.y)) return { x: 0, y: 0 };
+			force.x *= this.options.vectorField.factor;
+			force.y *= this.options.vectorField.factor;
+			return force;
+		}
+
+		return { x: 0, y: 0 };
+	}
+
 	update(boids: Boid[]) {
-		let separationDxDy: [number, number] = [0, 0];
-		let alignmentVel: [number, number] = [0, 0];
-		let cohesionDxDy: [number, number] = [0, 0];
+		let separationDxDy: { x: number; y: number } = { x: 0, y: 0 };
+		let alignmentVel: { x: number; y: number } = { x: 0, y: 0 };
+		let cohesionDxDy: { x: number; y: number } = { x: 0, y: 0 };
 		let numBoidsVisible = 0;
 
 		for (const boid of boids) {
@@ -96,34 +132,34 @@ class Boid {
 			}
 
 			if (this.options.followColor && boid.color === this.color) {
-				alignmentVel[0] += boid.vx;
-				alignmentVel[1] += boid.vy;
+				alignmentVel.x += boid.vx;
+				alignmentVel.y += boid.vy;
 
-				cohesionDxDy[0] += boid.x;
-				cohesionDxDy[1] += boid.y;
+				cohesionDxDy.x += boid.x;
+				cohesionDxDy.y += boid.y;
 
 				numBoidsVisible++;
 			}
 
 			if (distance < this.options.ranges.separation * this.options.ranges.separation) {
-				separationDxDy[0] -= dx / distance;
-				separationDxDy[1] -= dy / distance;
+				separationDxDy.x -= dx / distance;
+				separationDxDy.y -= dy / distance;
 			}
 		}
 
 		if (numBoidsVisible > 0) {
-			alignmentVel[0] /= numBoidsVisible;
-			alignmentVel[1] /= numBoidsVisible;
+			alignmentVel.x /= numBoidsVisible;
+			alignmentVel.y /= numBoidsVisible;
 
-			cohesionDxDy[0] /= numBoidsVisible;
-			cohesionDxDy[1] /= numBoidsVisible;
+			cohesionDxDy.x /= numBoidsVisible;
+			cohesionDxDy.y /= numBoidsVisible;
 		} else {
-			cohesionDxDy[0] = this.x;
-			cohesionDxDy[1] = this.y;
+			cohesionDxDy.x = this.x;
+			cohesionDxDy.y = this.y;
 		}
 
-		cohesionDxDy[0] -= this.x;
-		cohesionDxDy[1] -= this.y;
+		cohesionDxDy.x -= this.x;
+		cohesionDxDy.y -= this.y;
 
 		// normalize vectors
 		alignmentVel = normalize(alignmentVel);
@@ -138,22 +174,30 @@ class Boid {
 		this.mouseInteractions();
 
 		// update velocity based on separation
-		this.ax += separationDxDy[0] * this.options.factors.separation;
-		this.ay += separationDxDy[1] * this.options.factors.separation;
+		this.ax += separationDxDy.x * this.options.factors.separation;
+		this.ay += separationDxDy.y * this.options.factors.separation;
 
 		// update velocity based on alignment
-		this.ax += alignmentVel[0] * this.options.factors.alignment;
-		this.ay += alignmentVel[1] * this.options.factors.alignment;
+		this.ax += alignmentVel.x * this.options.factors.alignment;
+		this.ay += alignmentVel.y * this.options.factors.alignment;
 
 		// update velocity based on cohesion
-		this.ax += cohesionDxDy[0] * this.options.factors.cohesion;
-		this.ay += cohesionDxDy[1] * this.options.factors.cohesion;
+		this.ax += cohesionDxDy.x * this.options.factors.cohesion;
+		this.ay += cohesionDxDy.y * this.options.factors.cohesion;
 
 		// update based on bounds
 		this.ax += this.avoidBounds(this.x);
 		this.ax -= this.avoidBounds(this.options.bounds.width - this.x);
 		this.ay += this.avoidBounds(this.y);
 		this.ay -= this.avoidBounds(this.options.bounds.height - this.y);
+
+		// vector field
+		const vectorFieldForce = this.getVectorField();
+
+		if (!isNaN(vectorFieldForce.x) && !isNaN(vectorFieldForce.y)) {
+			this.ax += vectorFieldForce.x;
+			this.ay += vectorFieldForce.y;
+		}
 	}
 
 	pushUpdate(dt: number) {
@@ -225,12 +269,12 @@ class Boid {
 			ctx.closePath();
 		}
 
-		const unitVel = normalize([this.vx, this.vy]);
+		const unitVel = normalize({ x: this.vx, y: this.vy });
 
 		ctx.beginPath();
-		ctx.moveTo(this.x - unitVel[0] * 3 + unitVel[1] * 3, this.y - unitVel[1] * 3 - unitVel[0] * 3);
-		ctx.lineTo(this.x + unitVel[0] * 3, this.y + unitVel[1] * 3);
-		ctx.lineTo(this.x - unitVel[0] * 3 - unitVel[1] * 3, this.y - unitVel[1] * 3 + unitVel[0] * 3);
+		ctx.moveTo(this.x - unitVel.x * 3 + unitVel.y * 3, this.y - unitVel.y * 3 - unitVel.x * 3);
+		ctx.lineTo(this.x + unitVel.x * 3, this.y + unitVel.y * 3);
+		ctx.lineTo(this.x - unitVel.x * 3 - unitVel.y * 3, this.y - unitVel.y * 3 + unitVel.x * 3);
 		ctx.strokeStyle = this.options.colors.boids[this.color];
 		ctx.lineWidth = 2;
 		ctx.stroke();
@@ -250,7 +294,7 @@ export default class Boids {
 		this.canvas = canvas;
 		this.boids = [];
 		this.options = options;
-		this.oldOptions = { ...options };
+		this.oldOptions = JSON.parse(JSON.stringify(options));
 		this.timestep = 0;
 
 		this.updateCanvas();
@@ -263,6 +307,10 @@ export default class Boids {
 			this.canvas.width * 4,
 			this.canvas.height * 4
 		);
+	}
+
+	private copyOptions() {
+		this.oldOptions = JSON.parse(JSON.stringify(this.options));
 	}
 
 	private createBoids() {
@@ -293,12 +341,58 @@ export default class Boids {
 		}
 	}
 
+	private drawVectorField(ctx: CanvasRenderingContext2D) {
+		if (!this.options.show.vectorField) return;
+
+		for (let x = 0; x < this.canvas.width; x += this.options.vectorFieldGridWidth) {
+			for (let y = 0; y < this.canvas.height; y += this.options.vectorFieldGridWidth) {
+				const xy = {
+					x: x - this.canvas.width / 2,
+					y: y - this.canvas.height / 2
+				};
+
+				const force = getVectorFieldForce(xy, this.options);
+				if (isNaN(force.x) || isNaN(force.y)) continue;
+
+				const mult = 100 * this.options.vectorField.factor;
+
+				const unitVel = normalize({ x: force.x, y: force.y });
+
+				ctx.beginPath();
+				ctx.moveTo(x - force.x * mult, y - force.y * mult);
+				ctx.lineTo(x + force.x * mult, y + force.y * mult);
+
+				ctx.moveTo(x - unitVel.x * 3 + unitVel.y * 3, y - unitVel.y * 3 - unitVel.x * 3);
+				ctx.lineTo(x + unitVel.x * 3, y + unitVel.y * 3);
+				ctx.lineTo(x - unitVel.x * 3 - unitVel.y * 3, y - unitVel.y * 3 + unitVel.x * 3);
+				ctx.strokeStyle = this.options.colors.vectorField;
+				ctx.lineWidth = 1;
+				ctx.stroke();
+				ctx.closePath();
+			}
+		}
+	}
+
 	private update(time: number) {
 		if (this.canvas.width != window.innerWidth * this.options.bounds.scale) this.updateCanvas();
 		if (this.boids.length != this.options.boidCount) this.createBoids();
 		if (this.oldOptions.numBoidColors !== this.options.numBoidColors) {
 			this.createBoids();
-			this.oldOptions = { ...this.options };
+			this.copyOptions();
+		}
+		if (this.oldOptions.vectorField.x !== this.options.vectorField.x) {
+			this.options.vectorField.compiled.x = compileEquation(
+				this.options.vectorField.x,
+				this.options
+			);
+			this.copyOptions();
+		}
+		if (this.oldOptions.vectorField.y !== this.options.vectorField.y) {
+			this.options.vectorField.compiled.y = compileEquation(
+				this.options.vectorField.y,
+				this.options
+			);
+			this.copyOptions();
 		}
 
 		const dt = Math.min(4, (time - this.timestep) / 16);
@@ -308,7 +402,6 @@ export default class Boids {
 		ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
 		this.spatialHashBoids();
-
 		for (const boid of this.boids) {
 			boid.update(this.spatialhash.query(boid.x, boid.y, this.options.ranges.visible));
 		}
@@ -317,6 +410,7 @@ export default class Boids {
 			boid.pushUpdate(dt);
 		}
 
+		this.drawVectorField(ctx);
 		for (const boid of this.boids) {
 			boid.draw(ctx);
 		}
@@ -342,8 +436,15 @@ export default class Boids {
 
 	reset(options: BoidSimOptions) {
 		this.options = options;
-		this.oldOptions = { ...options };
+		this.copyOptions();
 		this.createBoids();
 		this.updateCanvas();
+	}
+
+	updateVectorField(vectorField: VectorField) {
+		this.options.vectorField = vectorField;
+		this.options.vectorField.compiled.x = compileEquation(this.options.vectorField.x, this.options);
+		this.options.vectorField.compiled.y = compileEquation(this.options.vectorField.y, this.options);
+		this.copyOptions();
 	}
 }

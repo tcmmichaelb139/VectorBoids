@@ -22,23 +22,49 @@ There are a few parameters in my implementation that can be adjusted to change t
 - **followColor**: Determines whether the boids follow their given color and try to stay with those with that color
 - **show** (separationRange, visibleRange): Toggles the display of circles that depict each boid’s personal space and visibility range.
 - **colors** (background, boids, protected, visible): Assigns the colors used for the simulation’s background, the boids, the protected zone, and visible zone.
+- **vectorField**: Specifies the type of vector field used to guide the boids (e.g., none, random, or vortex). _Note_: This feature is very slow and may not work well with a large number of boids.
 
 ## Interesting Presets
 
-There are a few cool configurations already given:
+### Boid Presets
 
-1. Normal boid behavior
-2. Normal behavior but faster
+1. Default: in between fish and bird like
+2. Bird like behavior
 3. Like a school of fish. Equalibrium is an approximate cycle around the window
-4. Bounds are set to the max of the height and width. Creates a spiral
-5. Bounds are set to the min of the height and width: Creates a spiral
-6. Two different colored boids. Seperates themselves out to a certain extent.
+4. Bounds are set to the min of the height and width: Creates a spiral
+5. Two different colored boids. Seperates themselves out to a certain extent.
+6. Ten different colored boids. Seperates themselves out to a certain extent.
+
+### Vector Field Presets
+
+1. Circle vector field
+2. True dipole (my favorite)
+3. Black hold esque
+4. Double spiral/vortex
+5. Spiral + bidirectional flow
+6. Converging circles
 
 # todo
 
 - [ ] create graphs for average speed and average number of other boids seen
-- [ ] cool versions of boids that i found
-- [ ] create a way to follow a line the user draws (add objects to avoid)
-- [ ] variants of boids
-- [ ] mobile version
+- [ ] more variants of boids
 - [ ] parallel computing?
+- [ ] GLSL parser similar to [Field Play](https://anvaka.github.io/fieldplay)
+
+## Tech Stack
+
+- Typescript
+- Svelte
+- HTML Canvas
+- TailWind
+
+The parameter pane is using [svelte-tweakpane-ui](https://github.com/kitschpatrol/svelte-tweakpane-ui)
+
+## Inspiration
+
+- [Field Play](https://anvaka.github.io/fieldplay)
+
+## Citations
+
+- [Boids Algorithm](https://en.wikipedia.org/wiki/Boids)
+- [Craig Reynolds's Paper](https://dl.acm.org/doi/10.1145/37401.37406)
