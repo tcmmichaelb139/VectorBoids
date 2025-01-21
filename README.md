@@ -2,7 +2,7 @@
 
 Boids with vector fields.
 
-![website](./assets/website.png)
+![website](./static/website.png)
 
 ## What?
 

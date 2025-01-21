@@ -58,6 +58,25 @@
 	});
 </script>
 
+<svelte:head>
+	<title>VectorBoids</title>
+	<meta name="description" content="Explore boids and vector fields in real time." />
+	<meta name="keywords" content="boids, vector fields, simulation, real time" />
+	<meta name="author" content="Michael Bao" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="theme-color" content="#ffffff" />
+	<meta name="robots" content="index, follow" />
+	<meta name="googlebot" content="index, follow" />
+	<meta name="bingbot" content="index, follow" />
+	<meta property="og:title" content="VectorBoids" />
+	<meta property="og:description" content="Explore boids and vector fields in real time." />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://vectorboids.michaelbao.io" />
+	<meta property="og:image" content="https://vectorboids.michaelbao.io/website.png" />
+	<meta property="og:site_name" content="VectorBoids" />
+	<meta property="og:locale" content="en_US" />
+</svelte:head>
+
 <div class="flex h-full w-full items-center justify-center">
 	<canvas
 		id="boids"
@@ -368,7 +387,7 @@
 					<p>
 						The full list of options in the settings pane can be seen <a
 							class="text-purple"
-							href=""
+							href="https://github.com/tcmmichaelb139/VectorBoids/blob/main/assets/options.png"
 							target="_blank"
 							rel="noopener noreferrer">here</a
 						>.
