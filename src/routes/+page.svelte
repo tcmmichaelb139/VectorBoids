@@ -36,20 +36,24 @@
 	$goptions.vectorField = getVectorFieldOptions(1);
 
 	try {
-		if ($parems.options) {
-			const parsedOptions = JSON.parse($parems.options);
-			for (const key in parsedOptions) {
-				if (parsedOptions.hasOwnProperty(key) && $goptions.hasOwnProperty(key)) {
-					$goptions[key] = parsedOptions[key];
+		if ($parems) {
+			for (const key in $goptions) {
+				if ($parems.hasOwnProperty(key) && $goptions.hasOwnProperty(key)) {
+					$goptions[key] = JSON.parse($parems[key]);
 				}
 			}
 		}
 	} catch (e) {
+		for (const key in $goptions) {
+			$parems[key] = JSON.stringify($goptions[key]);
+		}
 		console.log(e);
 	}
 
 	$effect(() => {
-		$parems.options = JSON.stringify($goptions);
+		for (const key in $goptions) {
+			$parems[key] = JSON.stringify($goptions[key]);
+		}
 		validVectorField = setOptions($goptions);
 	});
 
