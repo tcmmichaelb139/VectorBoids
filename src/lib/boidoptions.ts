@@ -2,11 +2,20 @@ import type { BoidSimOptions, VectorField } from '$lib/types';
 import { compileEquation } from '$lib/utils';
 
 export function getBoidSimOptions(num: number) {
-	if (num === 4)
-		interestingBoidSimOptions[4].bounds.margins =
+	if (num === 3)
+		interestingBoidSimOptions[3].bounds.margins =
 			Math.min(window.innerWidth, window.innerHeight) / 2;
 
 	return updateBoidOptions(interestingBoidSimOptions[num]);
+}
+
+export function compileEquations(options: BoidSimOptions) {
+	options.vectorField.compiled = {
+		x: compileEquation(options.vectorField.x, options),
+		y: compileEquation(options.vectorField.y, options)
+	};
+
+	return options;
 }
 
 export function updateBoidOptions(options: BoidSimOptions) {
@@ -25,12 +34,8 @@ export function updateBoidOptions(options: BoidSimOptions) {
 		'#1abc9c',
 		'#3d59a1'
 	];
-	options.vectorField.compiled = {
-		x: compileEquation(options.vectorField.x, options),
-		y: compileEquation(options.vectorField.y, options)
-	};
 
-	return options;
+	return compileEquations(options);
 }
 
 export function numBoidSimOptions() {
@@ -94,7 +99,6 @@ const interestingBoidSimOptions: BoidSimOptions[] = [
 			factor: 0.0025,
 			x: '1 / (1 + e^(-5.0 * (sqrt(x*x+y*y) - 300.0))) * 0.2 * -y + (1.0 - 1 / (1 + e^(-5.0 * (sqrt(x*x+y*y) - 300.0)))) * (0.0 * x + y)',
 			y: '1 / (1 + e^(-5.0 * (sqrt(x*x+y*y) - 300.0))) * 0.2 * x + (1.0 - 1 / (1 + e^(-5.0 * (sqrt(x*x+y*y) - 300.0)))) * (0.0 * y - x)',
-			valid: true,
 			compiled: {}
 		}
 	},
@@ -147,7 +151,6 @@ const interestingBoidSimOptions: BoidSimOptions[] = [
 			factor: 0.1,
 			x: '',
 			y: '',
-			valid: true,
 			compiled: {}
 		}
 	},
@@ -200,7 +203,6 @@ const interestingBoidSimOptions: BoidSimOptions[] = [
 			factor: 0.1,
 			x: '',
 			y: '',
-			valid: true,
 			compiled: {}
 		}
 	},
@@ -253,7 +255,6 @@ const interestingBoidSimOptions: BoidSimOptions[] = [
 			factor: 0.1,
 			x: '',
 			y: '',
-			valid: true,
 			compiled: {}
 		}
 	},
@@ -306,7 +307,6 @@ const interestingBoidSimOptions: BoidSimOptions[] = [
 			factor: 0.1,
 			x: '',
 			y: '',
-			valid: true,
 			compiled: {}
 		}
 	},
@@ -359,7 +359,6 @@ const interestingBoidSimOptions: BoidSimOptions[] = [
 			factor: 0.1,
 			x: '',
 			y: '',
-			valid: true,
 			compiled: {}
 		}
 	}
@@ -372,7 +371,6 @@ const interestingVectorFields: VectorField[] = [
 		factor: 0.1,
 		x: 'y / sqrt(x * x + y * y)',
 		y: '-x / sqrt(x * x + y * y)',
-		valid: true,
 		compiled: {}
 	},
 	{
@@ -380,7 +378,6 @@ const interestingVectorFields: VectorField[] = [
 		factor: 0.000001,
 		x: '2.0 * x * y',
 		y: 'y * y - x * x',
-		valid: true,
 		compiled: {}
 	},
 	{
@@ -388,7 +385,6 @@ const interestingVectorFields: VectorField[] = [
 		factor: 0.1,
 		x: '(y / (x * x + y * y) - 0.0001 * x)*100',
 		y: '(-x / (x * x + y * y) - 0.0001 * y)*100',
-		valid: true,
 		compiled: {}
 	},
 	{
@@ -396,7 +392,6 @@ const interestingVectorFields: VectorField[] = [
 		factor: 0.0025,
 		x: '1 / (1 + e^(-5.0 * (sqrt(x*x+y*y) - 300.0))) * -y + (1.0 - 1 / (1 + e^(-5.0 * (sqrt(x*x+y*y) - 300.0)))) * (0.2 * x + y)',
 		y: '1 / (1 + e^(-5.0 * (sqrt(x*x+y*y) - 300.0))) * x + (1.0 - 1 / (1 + e^(-5.0 * (sqrt(x*x+y*y) - 300.0)))) * (0.2 * y - x)',
-		valid: true,
 		compiled: {}
 	},
 	{
@@ -404,7 +399,6 @@ const interestingVectorFields: VectorField[] = [
 		factor: 0.0025,
 		x: 'y',
 		y: 'cos(sqrt(x^2 + y^2))',
-		valid: true,
 		compiled: {}
 	},
 	{
@@ -412,7 +406,6 @@ const interestingVectorFields: VectorField[] = [
 		factor: 0.00125,
 		x: '-x * log((x^2 + y^2) * 0.000025)',
 		y: '-y * log((x^2 + y^2) * 0.000025)',
-		valid: true,
 		compiled: {}
 	}
 ];

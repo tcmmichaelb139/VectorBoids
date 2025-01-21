@@ -77,13 +77,19 @@ export function compileEquation(
 	options: BoidSimOptions
 ): ((x: number, y: number) => number) | undefined {
 	if (!equation) return undefined;
+
+	equation = equation.replace(/(\r\n|\n|\r)/gm, '');
+
 	try {
 		const compiled = compile(equation);
-		options.vectorField.valid = true;
+
+		if (compiled.evaluate({ x: 0, y: 0 }) === undefined) {
+			throw new Error('Undefined');
+		}
+
 		return (x: number, y: number) => compiled.evaluate({ x, y });
-	} catch (e) {
-		options.vectorField.valid = false;
-	}
+	} catch (e) {}
+
 	return undefined;
 }
 

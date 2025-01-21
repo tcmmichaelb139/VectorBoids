@@ -2,7 +2,6 @@ export interface VectorField {
 	factor: number;
 	x: string;
 	y: string;
-	valid: boolean;
 	compiled: {
 		x?: (x: number, y: number) => number;
 		y?: (x: number, y: number) => number;
@@ -10,6 +9,7 @@ export interface VectorField {
 }
 
 export interface BoidSimOptions {
+	[option: string]: any;
 	boidCount: number;
 	numBoidColors: number;
 	bounds: {

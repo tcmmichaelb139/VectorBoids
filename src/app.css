@@ -25,10 +25,11 @@
 	--tp-monitor-background-color: theme('colors.bg-alt');
 	--tp-monitor-foreground-color: theme('colors.gray');
 	--tp-base-border-radius: 0px;
+	--tp-blade-border-radius: 0px;
 }
 
 html {
-	@apply m-0 h-full w-full bg-bg text-fg;
+	@apply m-0 h-full w-full bg-bg font-sans text-fg;
 }
 
 body {

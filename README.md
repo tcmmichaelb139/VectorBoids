@@ -1,4 +1,10 @@
-# 2d Boids
+# VectorBoids
+
+Boids with vector fields.
+
+![website](./assets/website.png)
+
+## What?
 
 This is a simple implementation of the boids algorithm in 2d. The boids algorithm is a simple algorithm that simulates the flocking behavior of birds. The algorithm was created by Craig Reynolds in 1986. The algorithm is based on three simple rules:
 
@@ -8,7 +14,7 @@ This is a simple implementation of the boids algorithm in 2d. The boids algorith
 
 ## Parameters
 
-There are a few parameters in my implementation that can be adjusted to change the behavior of the boids and the style of the simulation:
+There are a few parameters in my implementation that can be adjusted to change the behavior of the boids and the style of the simulation. A full list of these options can be seen in this image [here](./assets/options.png)
 
 - **boidCount**: Specifies the total number of boids in the simulation.
 - **numBoidColors**: Determines the number of colors used to draw the boids.
@@ -44,11 +50,11 @@ There are a few parameters in my implementation that can be adjusted to change t
 5. Spiral + bidirectional flow
 6. Converging circles
 
-# todo
+## todo
+
+may or may not complete
 
 - [ ] create graphs for average speed and average number of other boids seen
-- [ ] more variants of boids
-- [ ] parallel computing?
 - [ ] GLSL parser similar to [Field Play](https://anvaka.github.io/fieldplay)
 
 ## Tech Stack

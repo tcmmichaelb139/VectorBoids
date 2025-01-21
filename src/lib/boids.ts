@@ -1,4 +1,4 @@
-import type { BoidSimOptions, VectorField } from '$lib/types';
+import type { BoidSimOptions } from '$lib/types';
 import { mouse } from '$lib/globals';
 
 import {
@@ -10,6 +10,26 @@ import {
 	compileEquation
 } from './utils';
 
+let options: BoidSimOptions;
+
+export function setOptions(goptions: BoidSimOptions) {
+	options = JSON.parse(JSON.stringify(goptions));
+
+	if (options.vectorField.x) {
+		options.vectorField.compiled.x = compileEquation(options.vectorField.x, options);
+	} else {
+		options.vectorField.compiled.x = undefined;
+	}
+
+	if (options.vectorField.y) {
+		options.vectorField.compiled.y = compileEquation(options.vectorField.y, options);
+	} else {
+		options.vectorField.compiled.y = undefined;
+	}
+
+	return options.vectorField.compiled.x && options.vectorField.compiled.y ? true : false;
+}
+
 class Boid {
 	x: number;
 	y: number;
@@ -17,29 +37,28 @@ class Boid {
 	vy: number;
 	ax: number;
 	ay: number;
-	options: BoidSimOptions;
 	color: number;
 	history: [number, number][] = [];
 
-	constructor(x: number, y: number, vx: number, vy: number, options: BoidSimOptions) {
+	constructor(x: number, y: number, vx: number, vy: number) {
 		this.x = x;
 		this.y = y;
 		this.vx = vx;
 		this.vy = vy;
 		this.ax = 0;
 		this.ay = 0;
-		this.options = options;
+		options = options;
 		this.color = randomInt(1, options.numBoidColors) - 1;
 	}
 
 	private clampAcc() {
 		const acceleration = Math.sqrt(this.ax * this.ax + this.ay * this.ay);
 
-		this.ax = (this.ax / acceleration) * Math.max(this.options.caps.minAcceleration, acceleration);
-		this.ay = (this.ay / acceleration) * Math.max(this.options.caps.minAcceleration, acceleration);
+		this.ax = (this.ax / acceleration) * Math.max(options.caps.minAcceleration, acceleration);
+		this.ay = (this.ay / acceleration) * Math.max(options.caps.minAcceleration, acceleration);
 
-		this.ax = (this.ax / acceleration) * Math.min(acceleration, this.options.caps.maxAcceleration);
-		this.ay = (this.ay / acceleration) * Math.min(acceleration, this.options.caps.maxAcceleration);
+		this.ax = (this.ax / acceleration) * Math.min(acceleration, options.caps.maxAcceleration);
+		this.ay = (this.ay / acceleration) * Math.min(acceleration, options.caps.maxAcceleration);
 
 		if (isNaN(this.ax)) this.ax = 0;
 		if (isNaN(this.ay)) this.ay = 0;
@@ -50,29 +69,29 @@ class Boid {
 	private clampVel() {
 		const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
 
-		this.vx = (this.vx / speed) * Math.max(this.options.caps.minSpeed, speed);
-		this.vy = (this.vy / speed) * Math.max(this.options.caps.minSpeed, speed);
+		this.vx = (this.vx / speed) * Math.max(options.caps.minSpeed, speed);
+		this.vy = (this.vy / speed) * Math.max(options.caps.minSpeed, speed);
 
-		this.vx = (this.vx / speed) * Math.min(speed, this.options.caps.maxSpeed);
-		this.vy = (this.vy / speed) * Math.min(speed, this.options.caps.maxSpeed);
+		this.vx = (this.vx / speed) * Math.min(speed, options.caps.maxSpeed);
+		this.vy = (this.vy / speed) * Math.min(speed, options.caps.maxSpeed);
 
 		if (speed === 0) this.vx = this.vy = 0;
 	}
 
 	private avoidBounds(distance: number) {
-		if (distance < this.options.bounds.margins) {
-			return this.options.factors.turn;
+		if (distance < options.bounds.margins) {
+			return options.factors.turn;
 		} else {
-			return this.options.factors.turn / distance;
+			return options.factors.turn / distance;
 		}
 	}
 
 	private isOutsideBounds() {
 		return (
-			this.x < this.options.bounds.margins ||
-			this.x > this.options.bounds.width - this.options.bounds.margins ||
-			this.y < this.options.bounds.margins ||
-			this.y > this.options.bounds.height - this.options.bounds.margins
+			this.x < options.bounds.margins ||
+			this.x > options.bounds.width - options.bounds.margins ||
+			this.y < options.bounds.margins ||
+			this.y > options.bounds.height - options.bounds.margins
 		);
 	}
 
@@ -81,28 +100,28 @@ class Boid {
 		const dx = mouse.x - this.x;
 		const dy = mouse.y - this.y;
 		const distance = Math.sqrt(dx * dx + dy * dy);
-		if (distance < this.options.ranges.visible) {
-			if (this.options.mouse === 'avoid') {
-				this.ax -= (dx / distance) * this.options.factors.mouse;
-				this.ay -= (dy / distance) * this.options.factors.mouse;
-			} else if (this.options.mouse === 'attract') {
-				this.ax += (dx / distance) * this.options.factors.mouse;
-				this.ay += (dy / distance) * this.options.factors.mouse;
+		if (distance < options.ranges.visible) {
+			if (options.mouse === 'avoid') {
+				this.ax -= (dx / distance) * options.factors.mouse;
+				this.ay -= (dy / distance) * options.factors.mouse;
+			} else if (options.mouse === 'attract') {
+				this.ax += (dx / distance) * options.factors.mouse;
+				this.ay += (dy / distance) * options.factors.mouse;
 			}
 		}
 	}
 
 	private getVectorField() {
 		const xy = {
-			x: this.x - this.options.bounds.width / 2,
-			y: this.y - this.options.bounds.height / 2
+			x: this.x - options.bounds.width / 2,
+			y: this.y - options.bounds.height / 2
 		};
 
 		if (!this.isOutsideBounds()) {
-			const force = getVectorFieldForce(xy, this.options);
+			const force = getVectorFieldForce(xy, options);
 			if (isNaN(force.x) || isNaN(force.y)) return { x: 0, y: 0 };
-			force.x *= this.options.vectorField.factor;
-			force.y *= this.options.vectorField.factor;
+			force.x *= options.vectorField.factor;
+			force.y *= options.vectorField.factor;
 			return force;
 		}
 
@@ -125,13 +144,13 @@ class Boid {
 
 			if (
 				// check if boid is within view angle and distance
-				Math.abs(angle([dx, dy], [this.vx, this.vy])) > this.options.viewAngle * (Math.PI / 360) ||
-				distance > this.options.ranges.visible * this.options.ranges.visible
+				Math.abs(angle([dx, dy], [this.vx, this.vy])) > options.viewAngle * (Math.PI / 360) ||
+				distance > options.ranges.visible * options.ranges.visible
 			) {
 				continue;
 			}
 
-			if (this.options.followColor && boid.color === this.color) {
+			if (options.followColor && boid.color === this.color) {
 				alignmentVel.x += boid.vx;
 				alignmentVel.y += boid.vy;
 
@@ -141,7 +160,7 @@ class Boid {
 				numBoidsVisible++;
 			}
 
-			if (distance < this.options.ranges.separation * this.options.ranges.separation) {
+			if (distance < options.ranges.separation * options.ranges.separation) {
 				separationDxDy.x -= dx / distance;
 				separationDxDy.y -= dy / distance;
 			}
@@ -167,29 +186,29 @@ class Boid {
 		cohesionDxDy = normalize(cohesionDxDy);
 
 		// update acceleration
-		this.ax = -this.vx * this.options.factors.drag;
-		this.ay = -this.vy * this.options.factors.drag;
+		this.ax = -this.vx * options.factors.drag;
+		this.ay = -this.vy * options.factors.drag;
 
 		// mouse interactions
 		this.mouseInteractions();
 
 		// update velocity based on separation
-		this.ax += separationDxDy.x * this.options.factors.separation;
-		this.ay += separationDxDy.y * this.options.factors.separation;
+		this.ax += separationDxDy.x * options.factors.separation;
+		this.ay += separationDxDy.y * options.factors.separation;
 
 		// update velocity based on alignment
-		this.ax += alignmentVel.x * this.options.factors.alignment;
-		this.ay += alignmentVel.y * this.options.factors.alignment;
+		this.ax += alignmentVel.x * options.factors.alignment;
+		this.ay += alignmentVel.y * options.factors.alignment;
 
 		// update velocity based on cohesion
-		this.ax += cohesionDxDy.x * this.options.factors.cohesion;
-		this.ay += cohesionDxDy.y * this.options.factors.cohesion;
+		this.ax += cohesionDxDy.x * options.factors.cohesion;
+		this.ay += cohesionDxDy.y * options.factors.cohesion;
 
 		// update based on bounds
 		this.ax += this.avoidBounds(this.x);
-		this.ax -= this.avoidBounds(this.options.bounds.width - this.x);
+		this.ax -= this.avoidBounds(options.bounds.width - this.x);
 		this.ay += this.avoidBounds(this.y);
-		this.ay -= this.avoidBounds(this.options.bounds.height - this.y);
+		this.ay -= this.avoidBounds(options.bounds.height - this.y);
 
 		// vector field
 		const vectorFieldForce = this.getVectorField();
@@ -215,7 +234,7 @@ class Boid {
 
 		// update history
 		this.history.push([this.x, this.y]);
-		while (this.history.length > this.options.trailLength) this.history.shift();
+		while (this.history.length > options.trailLength) this.history.shift();
 	}
 
 	draw(ctx: CanvasRenderingContext2D) {
@@ -224,29 +243,29 @@ class Boid {
 		}
 
 		// draw visual range
-		if (this.options.show.visibleRange) {
+		if (options.show.visibleRange) {
 			ctx.beginPath();
-			ctx.strokeStyle = this.options.colors.visible;
+			ctx.strokeStyle = options.colors.visible;
 			const angle = Math.atan2(this.vy, this.vx);
 			ctx.arc(
 				this.x,
 				this.y,
-				this.options.ranges.visible,
-				angle - this.options.viewAngle * (Math.PI / 360),
-				angle + this.options.viewAngle * (Math.PI / 360)
+				options.ranges.visible,
+				angle - options.viewAngle * (Math.PI / 360),
+				angle + options.viewAngle * (Math.PI / 360)
 			);
 			ctx.stroke();
 			ctx.closePath();
 		}
 
 		// draw separation range
-		if (this.options.show.separationRange) {
+		if (options.show.separationRange) {
 			ctx.beginPath();
-			ctx.strokeStyle = this.options.colors.separation;
+			ctx.strokeStyle = options.colors.separation;
 			ctx.arc(
 				this.x,
 				this.y,
-				Math.min(this.options.ranges.separation, this.options.ranges.visible),
+				Math.min(options.ranges.separation, options.ranges.visible),
 				0,
 				2 * Math.PI
 			);
@@ -254,9 +273,9 @@ class Boid {
 			ctx.closePath();
 		}
 
-		if (this.options.trailLength > 0) {
+		if (options.trailLength > 0) {
 			ctx.beginPath();
-			ctx.strokeStyle = this.options.colors.boids[this.color];
+			ctx.strokeStyle = options.colors.boids[this.color];
 			ctx.lineWidth = 1;
 			ctx.moveTo(this.history[0][0], this.history[0][1]);
 			for (let i = 0; i < this.history.length - 1; i++) {
@@ -275,25 +294,23 @@ class Boid {
 		ctx.moveTo(this.x - unitVel.x * 3 + unitVel.y * 3, this.y - unitVel.y * 3 - unitVel.x * 3);
 		ctx.lineTo(this.x + unitVel.x * 3, this.y + unitVel.y * 3);
 		ctx.lineTo(this.x - unitVel.x * 3 - unitVel.y * 3, this.y - unitVel.y * 3 + unitVel.x * 3);
-		ctx.strokeStyle = this.options.colors.boids[this.color];
+		ctx.strokeStyle = options.colors.boids[this.color];
 		ctx.lineWidth = 2;
 		ctx.stroke();
 		ctx.closePath();
 	}
 }
 
-export default class Boids {
+export class Boids {
 	private canvas: HTMLCanvasElement;
 	private boids: Boid[];
-	private options: BoidSimOptions;
 	private oldOptions: BoidSimOptions;
 	private spatialhash: SpatialHashing<Boid>;
 	private timestep: number;
 
-	constructor(canvas: HTMLCanvasElement, options: BoidSimOptions) {
+	constructor(canvas: HTMLCanvasElement) {
 		this.canvas = canvas;
 		this.boids = [];
-		this.options = options;
 		this.oldOptions = JSON.parse(JSON.stringify(options));
 		this.timestep = 0;
 
@@ -310,27 +327,23 @@ export default class Boids {
 	}
 
 	private copyOptions() {
-		this.oldOptions = JSON.parse(JSON.stringify(this.options));
+		this.oldOptions = JSON.parse(JSON.stringify(options));
 	}
 
 	private createBoids() {
 		this.boids = [];
-		for (let i = 0; i < this.options.boidCount; i++) {
+		for (let i = 0; i < options.boidCount; i++) {
 			const px =
-				Math.random() * (this.canvas.width - 2 * this.options.bounds.margins) +
-				this.options.bounds.margins;
+				Math.random() * (this.canvas.width - 2 * options.bounds.margins) + options.bounds.margins;
 			const py =
-				Math.random() * (this.canvas.height - 2 * this.options.bounds.margins) +
-				this.options.bounds.margins;
+				Math.random() * (this.canvas.height - 2 * options.bounds.margins) + options.bounds.margins;
 			const sx =
-				(Math.random() * (this.options.caps.maxSpeed - this.options.caps.minSpeed) +
-					this.options.caps.minSpeed) *
+				(Math.random() * (options.caps.maxSpeed - options.caps.minSpeed) + options.caps.minSpeed) *
 				(Math.random() > 0.5 ? 1 : -1);
 			const sy =
-				(Math.random() * (this.options.caps.maxSpeed - this.options.caps.minSpeed) +
-					this.options.caps.minSpeed) *
+				(Math.random() * (options.caps.maxSpeed - options.caps.minSpeed) + options.caps.minSpeed) *
 				(Math.random() > 0.5 ? 1 : -1);
-			this.boids.push(new Boid(px, py, sx, sy, this.options));
+			this.boids.push(new Boid(px, py, sx, sy));
 		}
 	}
 
@@ -342,19 +355,19 @@ export default class Boids {
 	}
 
 	private drawVectorField(ctx: CanvasRenderingContext2D) {
-		if (!this.options.show.vectorField) return;
+		if (!options.show.vectorField) return;
 
-		for (let x = 0; x < this.canvas.width; x += this.options.vectorFieldGridWidth) {
-			for (let y = 0; y < this.canvas.height; y += this.options.vectorFieldGridWidth) {
+		for (let x = 0; x < this.canvas.width; x += options.vectorFieldGridWidth) {
+			for (let y = 0; y < this.canvas.height; y += options.vectorFieldGridWidth) {
 				const xy = {
 					x: x - this.canvas.width / 2,
 					y: y - this.canvas.height / 2
 				};
 
-				const force = getVectorFieldForce(xy, this.options);
+				const force = getVectorFieldForce(xy, options);
 				if (isNaN(force.x) || isNaN(force.y)) continue;
 
-				const mult = 100 * this.options.vectorField.factor;
+				const mult = 100 * options.vectorField.factor;
 
 				const unitVel = normalize({ x: force.x, y: force.y });
 
@@ -365,7 +378,7 @@ export default class Boids {
 				ctx.moveTo(x - unitVel.x * 3 + unitVel.y * 3, y - unitVel.y * 3 - unitVel.x * 3);
 				ctx.lineTo(x + unitVel.x * 3, y + unitVel.y * 3);
 				ctx.lineTo(x - unitVel.x * 3 - unitVel.y * 3, y - unitVel.y * 3 + unitVel.x * 3);
-				ctx.strokeStyle = this.options.colors.vectorField;
+				ctx.strokeStyle = options.colors.vectorField;
 				ctx.lineWidth = 1;
 				ctx.stroke();
 				ctx.closePath();
@@ -374,24 +387,18 @@ export default class Boids {
 	}
 
 	private update(time: number) {
-		if (this.canvas.width != window.innerWidth * this.options.bounds.scale) this.updateCanvas();
-		if (this.boids.length != this.options.boidCount) this.createBoids();
-		if (this.oldOptions.numBoidColors !== this.options.numBoidColors) {
+		if (options.bounds.width != window.innerWidth * options.bounds.scale) this.updateCanvas();
+		if (this.boids.length != options.boidCount) this.createBoids();
+		if (this.oldOptions.numBoidColors !== options.numBoidColors) {
 			this.createBoids();
 			this.copyOptions();
 		}
-		if (this.oldOptions.vectorField.x !== this.options.vectorField.x) {
-			this.options.vectorField.compiled.x = compileEquation(
-				this.options.vectorField.x,
-				this.options
-			);
+		if (this.oldOptions.vectorField.x !== options.vectorField.x) {
+			options.vectorField.compiled.x = compileEquation(options.vectorField.x, options);
 			this.copyOptions();
 		}
-		if (this.oldOptions.vectorField.y !== this.options.vectorField.y) {
-			this.options.vectorField.compiled.y = compileEquation(
-				this.options.vectorField.y,
-				this.options
-			);
+		if (this.oldOptions.vectorField.y !== options.vectorField.y) {
+			options.vectorField.compiled.y = compileEquation(options.vectorField.y, options);
 			this.copyOptions();
 		}
 
@@ -403,7 +410,7 @@ export default class Boids {
 
 		this.spatialHashBoids();
 		for (const boid of this.boids) {
-			boid.update(this.spatialhash.query(boid.x, boid.y, this.options.ranges.visible));
+			boid.update(this.spatialhash.query(boid.x, boid.y, options.ranges.visible));
 		}
 
 		for (const boid of this.boids) {
@@ -422,11 +429,11 @@ export default class Boids {
 	}
 
 	updateCanvas() {
-		this.canvas.width = window.innerWidth * this.options.bounds.scale;
-		this.canvas.height = window.innerHeight * this.options.bounds.scale;
+		this.canvas.width = window.innerWidth * options.bounds.scale;
+		this.canvas.height = window.innerHeight * options.bounds.scale;
 
-		this.options.bounds.width = this.canvas.width;
-		this.options.bounds.height = this.canvas.height;
+		options.bounds.width = this.canvas.width;
+		options.bounds.height = this.canvas.height;
 	}
 
 	start() {
@@ -434,17 +441,9 @@ export default class Boids {
 		this.update(this.timestep);
 	}
 
-	reset(options: BoidSimOptions) {
-		this.options = options;
+	reset() {
 		this.copyOptions();
 		this.createBoids();
 		this.updateCanvas();
-	}
-
-	updateVectorField(vectorField: VectorField) {
-		this.options.vectorField = vectorField;
-		this.options.vectorField.compiled.x = compileEquation(this.options.vectorField.x, this.options);
-		this.options.vectorField.compiled.y = compileEquation(this.options.vectorField.y, this.options);
-		this.copyOptions();
 	}
 }
