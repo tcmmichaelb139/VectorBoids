@@ -107,13 +107,7 @@
 			/>
 		</Folder>
 		<Folder title="Bounds" expanded={false}>
-			<Slider
-				bind:value={$goptions.bounds.margins}
-				label="Margins"
-				min={0}
-				max={Math.min($goptions.bounds.width, $goptions.bounds.width) / 2}
-				step={1}
-			/>
+			<Slider bind:value={$goptions.bounds.margins} label="Margins" min={0} max={5000} step={1} />
 			<Slider
 				bind:value={$goptions.bounds.scale}
 				label="Bounds Scale"
@@ -127,14 +121,14 @@
 				bind:value={$goptions.ranges.separation}
 				label="Separation Range"
 				min={0}
-				max={Math.max($goptions.bounds.width, $goptions.bounds.width)}
+				max={5000}
 				step={1}
 			/>
 			<Slider
 				bind:value={$goptions.ranges.visible}
 				label="Visible Range"
 				min={0}
-				max={Math.max($goptions.bounds.width, $goptions.bounds.width)}
+				max={5000}
 				step={1}
 			/>
 		</Folder>
@@ -166,7 +160,7 @@
 				bind:value={$goptions.factors.mouse}
 				label="Mouse Factor"
 				min={0}
-				max={5}
+				max={20}
 				step={0.01}
 			/>
 		</Folder>
@@ -337,7 +331,7 @@
 				</div>
 				<div class="flex min-w-0 flex-col">
 					<input
-						class="my-4 border border-gray/50 bg-bg p-1 text-sm text-fg outline-none transition-colors hover:border-gray"
+						class="my-4 border border-gray/50 bg-bg p-1 text-xs text-fg outline-none transition-colors hover:border-gray"
 						value={document.URL}
 					/>
 					<div class="text-wrap text-xs">You can also copy the link from the address bar.</div>

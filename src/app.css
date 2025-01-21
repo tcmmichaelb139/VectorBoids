@@ -26,6 +26,8 @@
 	--tp-monitor-foreground-color: theme('colors.gray');
 	--tp-base-border-radius: 0px;
 	--tp-blade-border-radius: 0px;
+	--tp-base-font-family: theme('fontFamily.sans');
+	--font-family: theme('fontFamily.mono');
 }
 
 html {
@@ -33,7 +35,11 @@ html {
 }
 
 body {
-	@apply m-0 h-full w-full;
+	@apply m-0 h-full w-full font-sans;
+}
+
+input {
+	@apply font-mono !important;
 }
 
 ::-webkit-scrollbar {
