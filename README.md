@@ -2,7 +2,7 @@
 
 Boids with vector fields.
 
-![website](https://vectorboids.michaelbao.io/website.png)
+![website](https://raw.githubusercontent.com/tcmmichaelb139/VectorBoids/refs/heads/main/static/website.png)
 
 ## What?
 
